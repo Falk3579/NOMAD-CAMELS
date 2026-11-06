@@ -51,7 +51,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y libegl1 libopengl0 libgl1 libxkbcommon-x11-0 libpulse0
 
-      - name: Install core, wheels only (detect missing cp314 wheels)
+      - name: Install PIMS 0.7 (pure-Python sdist for NumPy 2 compatibility)
+        run: python -m pip install "pims>=0.7"
+
+      - name: Install core with binary wheels after PIMS
         id: wheel_install
         continue-on-error: true
         run: |
