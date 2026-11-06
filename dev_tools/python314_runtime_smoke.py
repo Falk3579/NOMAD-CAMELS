@@ -74,6 +74,9 @@ def smoke_gui():
         with (
             patch("nomad_camels.utility.update_camels.show_release_notes"),
             patch("nomad_camels.utility.update_camels.auto_update"),
+            # check_config_path normally launches a second first-run modal
+            # configuration-directory dialog even when preferences exist.
+            patch("nomad_camels.utility.load_save_functions.check_config_path"),
             patch(
                 "nomad_camels.MainApp_v2.warn_popup.WarnPopup",
                 side_effect=fail_on_unexpected_dialog,
@@ -151,11 +154,15 @@ def smoke_zmq():
         deadline = time.monotonic() + 8
         while not dispatcher.loop.is_running() and time.monotonic() < deadline:
             time.sleep(0.05)
-        assert dispatcher.loop.is_running(), (
-            "RemoteDispatcher event loop did not start; "
-            f"thread_alive={dispatcher_thread.is_alive()}, "
-            f"errors={callback_errors!r}"
-        )
+        if not dispatcher.loop.is_running():
+            import faulthandler
+
+            faulthandler.dump_traceback(file=sys.stderr)
+            raise AssertionError(
+                "RemoteDispatcher event loop did not start; "
+                f"thread_alive={dispatcher_thread.is_alive()}, "
+                f"errors={callback_errors!r}"
+            )
 
         # PUB/SUB has no handshake: permit the subscriber to attach.
         time.sleep(0.75)
@@ -232,7 +239,7 @@ def smoke_hdf5(directory: Path):
         h5file.visititems(visit)
 
     assert datasets, "HDF5 output contains no datasets"
-    assert len(list(run.documents())) >= 4, "Simulated run documents unavailable on reopen"
+    assert len(list(run.documents(fill="yes"))) >= 4, "Simulated run documents unavailable on reopen"
     print(f"PASS: CAMELS HDF5 export/reopen ({outputs[0].name}, {len(datasets)} datasets)")
 
 
