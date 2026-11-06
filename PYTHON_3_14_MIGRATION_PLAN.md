@@ -130,6 +130,7 @@ Python 3.14 support is complete when:
 - [ ] Verify NumPy 2.x behavior in evaluation helpers, plotting, fitting, xarray/pandas conversion, and generated protocol code. Audit removed NumPy aliases and older SciPy APIs used by CAMELS or loaded plugins.
 - [ ] Run headless plotting tests and at least one **real graphical** smoke test on every supported OS; Xvfb/offscreen is useful but is not a substitute for interactive GUI validation.
 - [x] Verify a simulated Python 3.14 measurement writes HDF5 data through the existing suitcase and can reopen the file. The Linux smoke run found 131 HDF5 datasets (as recorded in [CI log](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42247940422)); value/shape regression fixtures and all-platform coverage remain separate unchecked tasks.
+- [x] Add and pass a Python 3.14 Ubuntu HDF5 value/shape regression: two simulated channels (42.0 and 84.0) are each verified twice in Databroker and in the persisted HDF5 datasets. [CI evidence](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42251231654). Windows/macOS results and broader metadata compatibility are not claimed by this scoped check.
 - [ ] Validate serialized data: create a simulated run, export with the suitcase, inspect metadata and datasets, reopen the output, and compare expected values and shapes.
 - [ ] Verify an existing representative file (preferably a non-sensitive fixture) can still be read and exported without silent schema changes.
 - [ ] If Databroker integration fails, isolate whether the issue is installation, catalog configuration, storage adapter, or data access; do not prematurely redesign the storage stack.
@@ -164,6 +165,7 @@ Python 3.14 support is complete when:
 - [ ] Make logs and test artifacts available for failures; do not use "retry then pass" to hide known deterministic compatibility errors. Track genuinely flaky tests separately.
 - [ ] Update installation commands, minimum Python requirements, platform-specific installation notes, release notes, and `README.md`. State that Python <=3.13 is unsupported in the new version; advise users of the last older-Python-compatible release without claiming it will receive updates.
 - [ ] Install and launch the **built wheel**, not only `pip install -e .`, to catch missing non-Python GUI and data resources.
+- [x] Implement cross-platform fresh-venv wheel verification (`dev_tools/python314_wheel_probe.py` plus a CI step): check the wheel imports from the isolated venv, check shipped GUI image resources, and exercise hardware-free HDF5 and GUI runtime smokes. **The implementation is committed; the installation/runtime acceptance gate above remains open until results pass.**
 - [ ] Review launchers, packaging metadata, and third-party installers (if distributed) for embedded Python 3.11; migrate them to CPython 3.14 or document as separate distributables.
 
 **Exit criterion:** reproducible green Python 3.14 CI for the claimed core feature set and matching user-facing release documentation.
