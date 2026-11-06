@@ -7,7 +7,7 @@
 **Target:** standard, GIL-enabled CPython 3.14 on Windows, Linux, and macOS  
 **Priority:** core desktop application and simulated measurements first; hardware drivers last
 
-**Completed/verified checkpoint:** clean Python 3.14 core installation, `pip check`, import and distribution build on Windows, Ubuntu, and macOS in [the packaging probe](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695). Hardware-free runtime smoke probes are being evaluated in [the latest CI run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42247940422); passing runtime behavior is **not yet claimed**.
+**Completed/verified checkpoints:** Python 3.14 packaging install / `pip check` / import / build on Windows, Ubuntu, and macOS in [the packaging probe](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695). **Ubuntu hardware-free runtime smoke checks all pass**, including ZMQ document transport and clean shutdown, simulated measurement, HDF5 output and reopen, generated protocol template, and headless Qt GUI startup/shutdown in [the latest runtime run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42248820919). Windows runtime checks and macOS runtime verification remain pending; full pytest, interactive plotting, and physical drivers are still separate tasks.
 
 ## 1. Decisions and definition of done
 
@@ -106,13 +106,13 @@ Python 3.14 support is complete when:
 
 - [x] Remove deprecated calls to `asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())` from the main window, generated protocol template, and test setup.
 - [ ] Determine which component actually owns and starts each event loop. Where a selector loop is needed, create it **locally in the correct thread** (e.g. an explicit `loop_factory` via `asyncio.Runner`/`asyncio.run` for owned async entry points); do **not** blindly wrap a synchronous Qt event loop in `asyncio.run`.
-- [ ] Check how the chosen Bluesky `RemoteDispatcher` and PyZMQ versions create/consume event loops and which thread invokes `dispatcher.start()`. Prefer documented upstream APIs.
+- [x] Check how the chosen Bluesky `RemoteDispatcher` and PyZMQ versions create/consume event loops and which thread invokes `dispatcher.start()`. Prefer documented upstream APIs.
 - [x] Update CAMELS' `RunEngineOverwrite._read` to Bluesky 1.16's multi-object `(object, reading)` bundler contract; the previous `ValueError` disappeared and the simulated run reached HDF5 output. Evidence: [diagnostic run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42246769233).
 - [ ] Test cancellation, unsubscribing, dispatcher closure, ZMQ socket/context closure, and application restart, especially after exceptions.
 - [ ] Exercise Python 3.14 default `forkserver` on Linux and `spawn` on Windows/macOS. Make subprocess targets/imports picklable; ensure process/Queue/port handoff is robust without relying on inherited Qt state.
 - [x] Replace any unbounded startup wait (for example `port_queue.get()` without a timeout) with bounded waits and useful diagnostics; ensure the child can be terminated on failure.
 - [ ] Verify generated standalone protocol scripts use the same corrected startup/cleanup logic. Avoid duplicated divergent setup code if a shared helper can be introduced safely.
-- [ ] Add a subprocess integration test: RunEngine -> Publisher -> proxy -> RemoteDispatcher receives `start`, `descriptor`, `event`, and `stop` (or relevant stream documents), and all processes/threads exit cleanly.
+- [x] Add a subprocess integration test: RunEngine -> Publisher -> proxy -> RemoteDispatcher receives `start`, `descriptor`, `event`, and `stop` (or relevant stream documents), and all processes/threads exit cleanly.
 - [ ] Test on actual Windows as the Windows selector/proactor difference is not reproduced on Linux.
 
 **Exit criterion:** simulated run documents flow reliably through the proxy and no orphaned process, hanging thread, or policy deprecation warning remains.
@@ -130,7 +130,7 @@ Python 3.14 support is complete when:
 - [ ] Validate serialized data: create a simulated run, export with the suitcase, inspect metadata and datasets, reopen the output, and compare expected values and shapes.
 - [ ] Verify an existing representative file (preferably a non-sensitive fixture) can still be read and exported without silent schema changes.
 - [ ] If Databroker integration fails, isolate whether the issue is installation, catalog configuration, storage adapter, or data access; do not prematurely redesign the storage stack.
-- [ ] Add regression tests for discovered incompatibilities, keeping fixtures independent of physical instruments.
+- [x] Add regression tests for discovered incompatibilities, keeping fixtures independent of physical instruments.
 
 **Exit criterion:** GUI + simulated measurement + plots + saved/reopened data pass on Python 3.14; core storage format remains compatible.
 
