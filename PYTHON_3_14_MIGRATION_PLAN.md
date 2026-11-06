@@ -77,7 +77,7 @@ Python 3.14 support is complete when:
 
 - [ ] Run `python -m pip check` and the current tests under a known-good **existing** CAMELS environment, if available; record current behavior for comparison. This is a historical baseline, **not** a continued support promise for <3.14.
 - [x] Record the commit, OS/architecture, Python build, and full `pip freeze` or `poetry show --tree` for baseline and migration environments. Preserve logs as CI artifacts, not committed binary files.
-- [ ] Probe fresh Python 3.14 virtual environments on Windows, Ubuntu, and macOS. Initially attempt installing the project with a **temporary local metadata relaxation** to expose dependency incompatibilities. Do not publish that metadata change yet.
+- [x] Probe fresh CPython 3.14 environments on Windows, Ubuntu, and macOS. All three [core installation jobs](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695) passed wheel-only dependency installation, `pip check`, module import, and wheel/sdist builds. The original temporary-metadata-relaxation proposal was superseded by the committed Python-3.14-only metadata; no temporary relaxation was used. This verifies **installation**, not macOS runtime or hardware behavior.
 - [ ] Separate failures into: (a) Requires-Python/solver, (b) no cp314 wheel/source build, (c) package import, (d) app/runtime, (e) optional extra, (f) hardware-only.
 - [ ] Create a concise compatibility ledger listing dependency, required feature, resolved 3.14 version, platform, status, and evidence.
 - [ ] Verify target architectures (for example x86_64/AMD64 and macOS arm64); do not infer support for untested architectures.
