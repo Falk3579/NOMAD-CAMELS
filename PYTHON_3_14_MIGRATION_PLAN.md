@@ -7,7 +7,7 @@
 **Target:** standard, GIL-enabled CPython 3.14 on Windows, Linux, and macOS  
 **Priority:** core desktop application and simulated measurements first; hardware drivers last
 
-**Completed/verified checkpoint:** clean Python 3.14 core installation, `pip check`, import and distribution build on Windows, Ubuntu, and macOS in [the packaging probe](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695). Hardware-free runtime smoke probes are being evaluated in [the runtime run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42244587723); passing runtime behavior is **not yet claimed**.
+**Completed/verified checkpoint:** clean Python 3.14 core installation, `pip check`, import and distribution build on Windows, Ubuntu, and macOS in [the packaging probe](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695). Hardware-free runtime smoke probes are being evaluated in [the latest CI run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42247940422); passing runtime behavior is **not yet claimed**.
 
 ## 1. Decisions and definition of done
 
@@ -91,6 +91,7 @@ Python 3.14 support is complete when:
 - [x] Replace all Python-version-specific dependency branches targeting 3.9–3.13 with a single 3.14 baseline, except any markers still required for OS distinctions.
 - [ ] Set NumPy and compiled scientific dependencies using versions with verified Python 3.14 builds. Explicitly test NumPy 2.x compatibility; avoid assuming an existing 1.26 minimum works.
 - [ ] Resolve `bluesky`, `ophyd`, `pyzmq`, `event-model` and `msgpack(-numpy)` together. Prefer a supported current Bluesky version; preserve the CAMELS RunEngine/ZMQ interfaces and avoid an unnecessary Bluesky API rewrite.
+- [x] Require `pims>=0.7` because Databroker 1.x otherwise installs PIMS 0.6.1, which imports removed `numpy.lib.arraypad`. The corrected Python 3.14 CI imports and executes the Databroker-backed simulated run without that error. Evidence: [diagnostic run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42246769233).
 - [ ] Try to retain Databroker 1.x first. If it or its transitive dependencies cannot resolve/run on 3.14, document the exact blocker and choose the **smallest possible** adaptation or compatibility shim. A full Tiled migration is a separate decision.
 - [ ] Validate `suitcase-nomad-camels-hdf5` and transitive HDF5 packages for Python 3.14 wheels and actual export behavior.
 - [ ] Resolve **core first**. Then install each extra independently: `api`, `material`, `visa`, `dash`, `dev`. An optional extra should not force unsupported dependencies on core users.
@@ -106,6 +107,7 @@ Python 3.14 support is complete when:
 - [x] Remove deprecated calls to `asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())` from the main window, generated protocol template, and test setup.
 - [ ] Determine which component actually owns and starts each event loop. Where a selector loop is needed, create it **locally in the correct thread** (e.g. an explicit `loop_factory` via `asyncio.Runner`/`asyncio.run` for owned async entry points); do **not** blindly wrap a synchronous Qt event loop in `asyncio.run`.
 - [ ] Check how the chosen Bluesky `RemoteDispatcher` and PyZMQ versions create/consume event loops and which thread invokes `dispatcher.start()`. Prefer documented upstream APIs.
+- [x] Update CAMELS' `RunEngineOverwrite._read` to Bluesky 1.16's multi-object `(object, reading)` bundler contract; the previous `ValueError` disappeared and the simulated run reached HDF5 output. Evidence: [diagnostic run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42246769233).
 - [ ] Test cancellation, unsubscribing, dispatcher closure, ZMQ socket/context closure, and application restart, especially after exceptions.
 - [ ] Exercise Python 3.14 default `forkserver` on Linux and `spawn` on Windows/macOS. Make subprocess targets/imports picklable; ensure process/Queue/port handoff is robust without relying on inherited Qt state.
 - [x] Replace any unbounded startup wait (for example `port_queue.get()` without a timeout) with bounded waits and useful diagnostics; ensure the child can be terminated on failure.
