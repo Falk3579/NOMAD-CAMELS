@@ -118,7 +118,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
         # Set the logo image
         image = QPixmap()
-        image.load(str(resources.files(graphics) / "CAMELS_horizontal.png"))
+        image.load(str(resources.files(graphics) / "camels_horizontal.png"))
         self.label_logo.setPixmap(image)
 
         # Set the arrow image using the style standard icon
