@@ -96,3 +96,11 @@ If `import nomad_camels` fails with a missing Qt shared-library error on Linux, 
 - **Windows/macOS:** Windows packaging passed, but final runtime acceptance for Windows and macOS is not documented as complete by this report. The linked CI jobs are the source of truth; macOS runtime jobs have repeatedly been queued.
 
 **Important:** No physical hardware driver validation has been performed. The normal test suite and wheel-installed (rather than editable-installed) GUI remain separate pending tasks.
+
+### Completed two-platform runtime validation
+
+The [2026-11-06 Python 3.14 CI run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42249544430) **passed in full on Ubuntu and Windows**: editable core install from available wheels (with pure-Python PIMS 0.7 preinstalled), `pip check`, import, wheel+sdist build, generated-protocol template, two-signal Bluesky-to-ZMQ document delivery and cleanup, CAMELS suitcase HDF5 export/reopen, and real Qt main-window startup/shutdown in an isolated headless test profile.
+
+The ZMQ shutdown exception was resolved by `nomad_camels.main_classes.plot_proxy.run_remote_dispatcher`, which suppresses the normal `asyncio.CancelledError` after dispatcher cleanup. The Windows test-profile cleanup failure was resolved by closing logging handlers before deleting the temporary profile. These are distinct from untested physical hardware drivers.
+
+**Remaining:** macOS runtime job queued; full existing pytest suite, installed-wheel GUI resources, detailed numeric/metadata HDF5 regression fixtures, graphical plot smoke, API extras, and release CI/tooling migration are not complete.
