@@ -80,7 +80,7 @@ def main():
             "package = Path(nomad_camels.__file__).resolve(); "
             "prefix = Path(sys.prefix).resolve(); "
             "assert prefix in package.parents, (prefix, package); "
-            "assets = ['CAMELS_Icon.png', 'CAMELS_vertical.png', 'CAMELS_horizontal.png']; "
+            "assets = ['CAMELS_Icon.png', 'camels_vertical.png', 'camels_horizontal.png']; "
             "assert all((files(graphics) / name).is_file() for name in assets), assets; "
             "print('PASS: wheel installed in isolated venv with GUI resources:', package)"
         )
