@@ -92,7 +92,7 @@ Python 3.14 support is complete when:
 - [ ] Set NumPy and compiled scientific dependencies using versions with verified Python 3.14 builds. Explicitly test NumPy 2.x compatibility; avoid assuming an existing 1.26 minimum works.
 - [ ] Resolve `bluesky`, `ophyd`, `pyzmq`, `event-model` and `msgpack(-numpy)` together. Prefer a supported current Bluesky version; preserve the CAMELS RunEngine/ZMQ interfaces and avoid an unnecessary Bluesky API rewrite.
 - [x] Require `pims>=0.7` because Databroker 1.x otherwise installs PIMS 0.6.1, which imports removed `numpy.lib.arraypad`. The corrected Python 3.14 CI imports and executes the Databroker-backed simulated run without that error. Evidence: [diagnostic run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42246769233).
-- [ ] Try to retain Databroker 1.x first. If it or its transitive dependencies cannot resolve/run on 3.14, document the exact blocker and choose the **smallest possible** adaptation or compatibility shim. A full Tiled migration is a separate decision.
+- [x] Try to retain Databroker 1.x first. If it or its transitive dependencies cannot resolve/run on 3.14, document the exact blocker and choose the **smallest possible** adaptation or compatibility shim. A full Tiled migration is a separate decision.
 - [ ] Validate `suitcase-nomad-camels-hdf5` and transitive HDF5 packages for Python 3.14 wheels and actual export behavior.
 - [ ] Resolve **core first**. Then install each extra independently: `api`, `material`, `visa`, `dash`, `dev`. An optional extra should not force unsupported dependencies on core users.
 - [ ] Decide whether to generate `requirements.txt` from authoritative metadata, reduce it to a documented constraint set, or remove it; eliminate incompatible old pins.
@@ -126,6 +126,7 @@ Python 3.14 support is complete when:
 - [ ] Exercise protocol editing, channel selection, device configuration for simulated devices, queueing, aborting, status indicators, manual controls without hardware, and standard preferences persistence.
 - [ ] Verify NumPy 2.x behavior in evaluation helpers, plotting, fitting, xarray/pandas conversion, and generated protocol code. Audit removed NumPy aliases and older SciPy APIs used by CAMELS or loaded plugins.
 - [ ] Run headless plotting tests and at least one **real graphical** smoke test on every supported OS; Xvfb/offscreen is useful but is not a substitute for interactive GUI validation.
+- [x] Verify a simulated Python 3.14 measurement writes HDF5 data through the existing suitcase and can reopen the file. The Linux smoke run found 131 HDF5 datasets (as recorded in [CI log](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42247940422)); value/shape regression fixtures and all-platform coverage remain separate unchecked tasks.
 - [ ] Validate serialized data: create a simulated run, export with the suitcase, inspect metadata and datasets, reopen the output, and compare expected values and shapes.
 - [ ] Verify an existing representative file (preferably a non-sensitive fixture) can still be read and exported without silent schema changes.
 - [ ] If Databroker integration fails, isolate whether the issue is installation, catalog configuration, storage adapter, or data access; do not prematurely redesign the storage stack.
