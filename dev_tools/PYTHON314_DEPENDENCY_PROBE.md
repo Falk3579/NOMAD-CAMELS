@@ -83,3 +83,16 @@ On Windows PowerShell, create and activate the venv using `py -3.14 -m venv .ven
 If `import nomad_camels` fails with a missing Qt shared-library error on Linux, install the corresponding OS runtime packages first; do not attempt to fix it by changing Python package pins.
 
 **Environment limitation:** The inspection environment where these GitHub changes were authored only had Python 3.13 and no direct PyPI/network access. Actual Python 3.14 installation and build observations above come from GitHub-hosted CI runners, not from a local 3.14 installation.
+
+## Runtime milestone observations (2026-11-06)
+
+**Source:** [GitHub Actions run 42247940422](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42247940422), Ubuntu CPython 3.14, with runtime smoke scripts under `dev_tools/`.
+
+- **HDF5:** PASS. The CAMELS suitcase exported a simulated two-signal Bluesky measurement, and h5py reopened the file containing 131 datasets. A more detailed fixture verifying data values and dataset shape still needs to be added.
+- **GUI:** PASS. With the first-launch configuration dialog disabled in isolated test preferences, the Qt main window initialized its ZeroMQ proxy and closed without orphan threads or processes.
+- **Bluesky / ZMQ transport:** Measurement documents were received (start, descriptor, two events, stop), but the test flagged `asyncio.CancelledError` when the dispatcher was stopped. This is a shutdown-handling problem, **not a document-delivery failure**. The wrapper `run_remote_dispatcher` in `main_classes/plot_proxy.py` now treats cancellation after dispatcher cleanup as normal. Verification is pending in [the rerun](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42248820919).
+- **Bluesky run-engine compatibility:** Original `RunEngineOverwrite._read` passed a dict to the Bluesky 1.16 bundler where the bundler now requires a list of `(object, reading)` pairs; this caused `ValueError: too many values to unpack`. The override now handles multiple readables and preserves error recovery for devices opting in.
+- **Databroker / NumPy:** Databroker 1.2.5 can remain; using PIMS 0.7+ fixes a transitive NumPy 2 import break. PIMS 0.7 is currently distributed as a source archive, which is preinstalled before the strict wheel-only CI probe.
+- **Windows/macOS:** Windows packaging passed, but final runtime acceptance for Windows and macOS is not documented as complete by this report. The linked CI jobs are the source of truth; macOS runtime jobs have repeatedly been queued.
+
+**Important:** No physical hardware driver validation has been performed. The normal test suite and wheel-installed (rather than editable-installed) GUI remain separate pending tasks.
