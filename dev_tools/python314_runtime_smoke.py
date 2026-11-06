@@ -103,6 +103,11 @@ def smoke_gui():
         sys.stdout, sys.stderr = old_stdout, old_stderr
         if window is not None and window.isVisible():
             window.close()
+        # RotatingFileHandler keeps nomad_camels.log open on Windows.
+        # Close all handlers before TemporaryDirectory deletes the test data.
+        import logging
+
+        logging.shutdown()
     print("PASS: Qt GUI opens, initializes ZMQ, and closes without orphan threads/processes")
 
 
