@@ -307,7 +307,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.preferences["last_shown_notes"] = version
             load_save_functions.save_preferences(self.preferences)
         if start_proxy_bool:
-            from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
+            from nomad_camels.main_classes.plot_proxy import run_zmq_proxy, run_remote_dispatcher
             import multiprocessing
             import threading
             import asyncio
@@ -349,7 +349,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             # 4. Start Dispatcher in a Thread
             # We store the thread as self.dispatcher_thread to join it later
             self.dispatcher_thread = threading.Thread(
-                target=self.dispatcher.start,
+                target=run_remote_dispatcher,
+                args=(self.dispatcher,),
                 daemon=True,
             )
             self.dispatcher_thread.start()
