@@ -40,40 +40,41 @@ class RunEngineOverwrite(RunEngine):
     """
 
     async def _read(self, msg):
-        obj = run_engine.check_supports(msg.obj, run_engine.Readable)
-        # actually _read_ the object
-        run_engine.warn_if_msg_args_or_kwargs(msg, obj.read, msg.args, msg.kwargs)
-        # the try except block is added
-        if hasattr(obj, "__read_w_except__") and obj.__read_w_except__:
-            try:
-                ret = await run_engine.maybe_await(obj.read(*msg.args, **msg.kwargs))
-            except Exception as e:
-                logging.warning(f"Error reading object: {obj}, Exception: {e}")
-                print("Error reading object: ", obj)
-                print("Exception: ", e)
-                import time
+        """Read one or more devices while preserving CAMELS' error recovery.
 
-                ret = {
+        Bluesky 1.16 treats every positional object in a read message as a
+        device and passes a list of (device, reading) pairs to the bundler.
+        The previous CAMELS override passed the reading dict itself, which
+        now causes ValueError during normal measurement plans.
+        """
+        import asyncio
+        import time
+
+        objects = list((msg.obj,) + msg.args) if msg.obj is not None else []
+        objects = [
+            run_engine.check_supports(obj, run_engine.Readable) for obj in objects
+        ]
+
+        async def read_one(obj):
+            try:
+                return await self._perform_single_reading(obj)
+            except Exception as exc:
+                if not getattr(obj, "__read_w_except__", False):
+                    raise
+                logging.warning("Error reading object %s: %s", obj, exc)
+                return {
                     obj.name: {
-                        "value": get_nan_value(obj.value),
+                        "value": get_nan_value(getattr(obj, "value", None)),
                         "timestamp": time.time(),
                     }
                 }
-        else:
-            ret = await run_engine.maybe_await(obj.read(*msg.args, **msg.kwargs))
 
-        if ret is None:
-            raise RuntimeError(
-                f"The read of {obj.name} returned None. "
-                "This is a bug in your object implementation, "
-                "`read` must return a dictionary."
-            )
-        run_key = msg.run
-        try:
-            current_run = self._run_bundlers[run_key]
-        except KeyError:
-            ...
-        else:
-            await current_run.read(msg, ret)
+        readings = await asyncio.gather(*(read_one(obj) for obj in objects))
+        current_run = self._run_bundlers.get(msg.run)
+        if current_run is not None:
+            await current_run.read(msg, list(zip(objects, readings)))
 
-        return ret
+        result = {}
+        for reading in readings:
+            result.update(reading)
+        return result
