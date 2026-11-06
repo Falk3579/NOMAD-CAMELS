@@ -115,6 +115,6 @@ The ZMQ shutdown exception was resolved by `nomad_camels.main_classes.plot_proxy
 - Updated Poetry package includes for `graphics/**/*`, Qt `.ui` and `.qrc`, and API `.yaml` resources in both sdist and wheel.
 - The **corrected Ubuntu built-wheel probe passed**: clean venv installation, package-asset inspection, `pip check`, HDF5 round trip and Qt GUI launch/close. [Corrected CI run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42251913059).
 - Added numeric data regression assertions: the two simulated signal streams must contain two readings each with the expected values 42.0 and 84.0 in both Databroker and persisted HDF5 datasets. The corrected Ubuntu HDF5 smoke passed.
-- Windows/macOS fresh-wheel platform acceptance is not claimed in this snapshot; consult the latest run's per-OS job outcomes. macOS runner assignment was still queued.
+- The corrected run passed in full on **both Ubuntu and Windows** for fresh-venv wheel installation, `pip check`, packaged GUI resources, HDF5 export/reopen and Qt GUI startup/shutdown. **macOS** remains unverified because its job has not been assigned a runner. See the [per-OS job results](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42251913059).
 
 The full suite, interactive plotting, real hardware, API extras, and remaining legacy version tooling still require separate work. Do not regard this as a production release declaration.
