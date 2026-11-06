@@ -111,7 +111,7 @@ def smoke_zmq():
     from bluesky.callbacks.zmq import Publisher, RemoteDispatcher
 
     from nomad_camels.bluesky_handling.run_engine_overwrite import RunEngineOverwrite
-    from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
+    from nomad_camels.main_classes.plot_proxy import run_zmq_proxy, run_remote_dispatcher
 
     context = multiprocessing.get_context()
     port_queue = context.Queue()
@@ -145,7 +145,7 @@ def smoke_zmq():
 
         def dispatch():
             try:
-                dispatcher.start()
+                run_remote_dispatcher(dispatcher)
             except BaseException as exc:
                 callback_errors.append(repr(exc))
 
