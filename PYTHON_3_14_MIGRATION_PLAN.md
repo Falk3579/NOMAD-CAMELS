@@ -9,6 +9,8 @@
 
 **Completed/verified checkpoints:** Python 3.14 packaging install / `pip check` / import / build on Windows, Ubuntu, and macOS in [the packaging probe](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695). **Ubuntu hardware-free runtime smoke checks all pass**, including ZMQ document transport and clean shutdown, simulated measurement, HDF5 output and reopen, generated protocol template, and headless Qt GUI startup/shutdown in [the latest runtime run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42248820919). Windows runtime checks and macOS runtime verification remain pending; full pytest, interactive plotting, and physical drivers are still separate tasks.
 
+**Windows evidence:** [Windows Python 3.14 runtime job](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42248820919) successfully delivered Bluesky/ZeroMQ documents and generated/reopened HDF5 output, and initialized/closed the Qt GUI. That run's final conclusion was failure solely because the smoke test attempted to delete a still-open Windows log file; test teardown now closes logging handlers, with [a full rerun](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42249544430) verifying the fix. macOS runtime tests remain queued.
+
 ## 1. Decisions and definition of done
 
 ### Explicit support decisions
@@ -90,10 +92,10 @@ Python 3.14 support is complete when:
 - [x] Select a Python 3.14-capable PySide6 version (at least 6.10.1); consider pairing with a matching PySide6 Addons/Essentials release via dependency resolver. Do not retain `<6.9`.
 - [x] Replace all Python-version-specific dependency branches targeting 3.9–3.13 with a single 3.14 baseline, except any markers still required for OS distinctions.
 - [ ] Set NumPy and compiled scientific dependencies using versions with verified Python 3.14 builds. Explicitly test NumPy 2.x compatibility; avoid assuming an existing 1.26 minimum works.
-- [ ] Resolve `bluesky`, `ophyd`, `pyzmq`, `event-model` and `msgpack(-numpy)` together. Prefer a supported current Bluesky version; preserve the CAMELS RunEngine/ZMQ interfaces and avoid an unnecessary Bluesky API rewrite.
+- [x] Resolve `bluesky`, `ophyd`, `pyzmq`, `event-model` and `msgpack(-numpy)` together. Prefer a supported current Bluesky version; preserve the CAMELS RunEngine/ZMQ interfaces and avoid an unnecessary Bluesky API rewrite.
 - [x] Require `pims>=0.7` because Databroker 1.x otherwise installs PIMS 0.6.1, which imports removed `numpy.lib.arraypad`. The corrected Python 3.14 CI imports and executes the Databroker-backed simulated run without that error. Evidence: [diagnostic run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42246769233).
 - [x] Try to retain Databroker 1.x first. If it or its transitive dependencies cannot resolve/run on 3.14, document the exact blocker and choose the **smallest possible** adaptation or compatibility shim. A full Tiled migration is a separate decision.
-- [ ] Validate `suitcase-nomad-camels-hdf5` and transitive HDF5 packages for Python 3.14 wheels and actual export behavior.
+- [x] Validate `suitcase-nomad-camels-hdf5` and transitive HDF5 packages for Python 3.14 wheels and actual export behavior.
 - [ ] Resolve **core first**. Then install each extra independently: `api`, `material`, `visa`, `dash`, `dev`. An optional extra should not force unsupported dependencies on core users.
 - [ ] Decide whether to generate `requirements.txt` from authoritative metadata, reduce it to a documented constraint set, or remove it; eliminate incompatible old pins.
 - [ ] Test an sdist and wheel build (`python -m build`); install the resulting wheel into a fresh 3.14 environment and run `pip check`.
@@ -113,7 +115,7 @@ Python 3.14 support is complete when:
 - [x] Replace any unbounded startup wait (for example `port_queue.get()` without a timeout) with bounded waits and useful diagnostics; ensure the child can be terminated on failure.
 - [ ] Verify generated standalone protocol scripts use the same corrected startup/cleanup logic. Avoid duplicated divergent setup code if a shared helper can be introduced safely.
 - [x] Add a subprocess integration test: RunEngine -> Publisher -> proxy -> RemoteDispatcher receives `start`, `descriptor`, `event`, and `stop` (or relevant stream documents), and all processes/threads exit cleanly.
-- [ ] Test on actual Windows as the Windows selector/proactor difference is not reproduced on Linux.
+- [x] Test on actual Windows as the Windows selector/proactor difference is not reproduced on Linux.
 
 **Exit criterion:** simulated run documents flow reliably through the proxy and no orphaned process, hanging thread, or policy deprecation warning remains.
 
