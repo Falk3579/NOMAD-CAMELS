@@ -37,9 +37,27 @@ def simulated_run(run_engine, *, subscriber=None):
 
 def smoke_gui():
     """Exercise the real Qt main window, its proxy, and clean shutdown."""
+    import json
+
     from PySide6.QtWidgets import QApplication
 
     from nomad_camels.MainApp_v2 import MainWindow
+    from nomad_camels.utility import load_save_functions
+
+    # First launch normally asks the user to select a data directory. This
+    # is an intentional modal dialog, not a Python 3.14 compatibility error.
+    # Seed isolated preferences so unattended CI does not wait for a click.
+    preferences_dir = Path(load_save_functions.appdata_path)
+    preferences_dir.mkdir(parents=True, exist_ok=True)
+    preferences = dict(load_save_functions.standard_pref)
+    preferences.update(
+        auto_check_updates=False,
+        autosave=False,
+        password_protection=False,
+    )
+    (preferences_dir / "preferences.json").write_text(
+        json.dumps(preferences), encoding="utf-8"
+    )
 
     app = QApplication.instance() or QApplication([])
     old_stdout, old_stderr = sys.stdout, sys.stderr
