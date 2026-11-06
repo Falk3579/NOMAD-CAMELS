@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: python314-smoke-${{ github.ref }}
+  group: python314-smoke-v2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
