@@ -22,10 +22,6 @@ import threading
 import socket
 import time
 
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-
 def get_available_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
@@ -51,15 +47,18 @@ def zmq_setup():
         daemon=True,
     )
     proxy_proc.start()
-    # Give the proxy 200ms to bind to the ports
-    time.sleep(0.2)
-    # Retrieve the dynamically assigned ports
-    in_port, out_port = port_queue.get()
+    # Fail with a useful error instead of hanging when the child cannot bind.
+    in_port, out_port = port_queue.get(timeout=15)
+    port_queue.close()
+    port_queue.join_thread()
     print(f"Proxy started on ports: Publisher={in_port}, Dispatcher={out_port}")
     # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
     # Measurements only create their own if the Python script is run 'standalone', so without the main app.
     publisher = Publisher(f"localhost:{in_port}")
-    dispatcher = RemoteDispatcher(f"localhost:{out_port}")
+    dispatcher = RemoteDispatcher(
+        f"localhost:{out_port}",
+        loop=asyncio.SelectorEventLoop() if sys.platform == "win32" else None,
+    )
 
     # 4. Start Dispatcher in a Thread
     # We store the thread as dispatcher_thread to join it later
@@ -72,7 +71,7 @@ def zmq_setup():
     yield publisher, dispatcher
 
     # Teardown: stop the proxy once all tests have finished.
-    dispatcher.loop.call_soon_threadsafe(dispatcher.loop.stop)
+    dispatcher.stop()
     dispatcher_thread.join(timeout=2.0)
     proxy_proc.terminate()
     proxy_proc.join(timeout=1.0)
