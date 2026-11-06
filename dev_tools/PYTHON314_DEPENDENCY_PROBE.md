@@ -104,3 +104,17 @@ The [2026-11-06 Python 3.14 CI run](https://github.com/Falk3579/NOMAD-CAMELS/act
 The ZMQ shutdown exception was resolved by `nomad_camels.main_classes.plot_proxy.run_remote_dispatcher`, which suppresses the normal `asyncio.CancelledError` after dispatcher cleanup. The Windows test-profile cleanup failure was resolved by closing logging handlers before deleting the temporary profile. These are distinct from untested physical hardware drivers.
 
 **Remaining:** macOS runtime job queued; full existing pytest suite, installed-wheel GUI resources, detailed numeric/metadata HDF5 regression fixtures, graphical plot smoke, API extras, and release CI/tooling migration are not complete.
+
+## Fresh-wheel isolation and resource packaging (2026-11-06)
+
+**Why this matters:** The editable-install smoke tests can import images and UI resources directly from the checkout. They do not establish that a user-installed wheel contains the same files.
+
+- Added `dev_tools/python314_wheel_probe.py`, which builds a fresh CPython 3.14 venv outside the repository, installs the distribution wheel without editable source, runs `pip check`, confirms the imported package resides under the venv, validates graphics files with `importlib.resources`, then executes the HDF5 and GUI smoke cases.
+- The **first Ubuntu wheel probe failed** after successfully installing the wheel and passing `pip check`: `CAMELS_Icon.png` and other expected graphics were not packaged into the distribution wheel. [Failed CI run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42251231654).
+- The source also referred to `CAMELS_vertical.png` and `CAMELS_horizontal.png`, but the actual filenames are `camels_vertical.png` and `camels_horizontal.png` on case-sensitive filesystems. Fixed the references in `CAMELS_start.py` and `MainApp_v2.py`; the GUI smoke now checks that the main-window logo QPixmap is not null.
+- Updated Poetry package includes for `graphics/**/*`, Qt `.ui` and `.qrc`, and API `.yaml` resources in both sdist and wheel.
+- The **corrected Ubuntu built-wheel probe passed**: clean venv installation, package-asset inspection, `pip check`, HDF5 round trip and Qt GUI launch/close. [Corrected CI run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42251913059).
+- Added numeric data regression assertions: the two simulated signal streams must contain two readings each with the expected values 42.0 and 84.0 in both Databroker and persisted HDF5 datasets. The corrected Ubuntu HDF5 smoke passed.
+- Windows/macOS fresh-wheel platform acceptance is not claimed in this snapshot; consult the latest run's per-OS job outcomes. macOS runner assignment was still queued.
+
+The full suite, interactive plotting, real hardware, API extras, and remaining legacy version tooling still require separate work. Do not regard this as a production release declaration.
