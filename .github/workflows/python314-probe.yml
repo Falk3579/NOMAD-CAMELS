@@ -6,7 +6,13 @@ on:
   push:
     branches:
       - feature/python-3-14-support
+    paths-ignore:
+      - "**/*.md"
   workflow_dispatch:
+
+concurrency:
+  group: python314-smoke-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
