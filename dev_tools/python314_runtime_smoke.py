@@ -32,7 +32,9 @@ def simulated_run(run_engine, *, subscriber=None):
     if subscriber is not None:
         run_engine.subscribe(subscriber)
     detector = Signal(value=42.0, name="camels_python314_sim")
-    return run_engine(count([detector], num=2, delay=0.01))
+    auxiliary = Signal(value=84.0, name="camels_python314_aux")
+    # Bluesky 1.16 sends both readables in a single read message.
+    return run_engine(count([detector, auxiliary], num=2, delay=0.01))
 
 
 def smoke_gui():
