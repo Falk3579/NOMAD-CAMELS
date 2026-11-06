@@ -311,11 +311,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             import multiprocessing
             import threading
             import asyncio
+            import queue
             from bluesky.callbacks.zmq import RemoteDispatcher, Publisher
-
-            # Apply Windows asyncio fix (prevents the ProactorEventLoop warning)
-            if sys.platform == "win32":
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
             # Setup queue to receive dynamic ports
             port_queue = multiprocessing.Queue()
             # Start the Proxy Process
@@ -326,15 +323,28 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 daemon=True,
             )
             self.proxy_proc.start()
-            # Give the proxy 200ms to bind to the ports
-            time.sleep(0.2)
-            # Retrieve the dynamically assigned ports
-            in_port, out_port = port_queue.get()
+            # Bound the handshake so a failed child cannot hang GUI startup.
+            try:
+                in_port, out_port = port_queue.get(timeout=15)
+            except queue.Empty as exc:
+                self.proxy_proc.terminate()
+                self.proxy_proc.join(timeout=2)
+                raise RuntimeError(
+                    "ZeroMQ proxy did not report its ports within 15 seconds"
+                ) from exc
+            finally:
+                port_queue.close()
+                port_queue.join_thread()
             print(f"Proxy started on ports: Publisher={in_port}, Dispatcher={out_port}")
             # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
             # Measurements only create their own if the Python script is run 'standalone', so without the main app.
             self.publisher = Publisher(f"localhost:{in_port}")
-            self.dispatcher = RemoteDispatcher(f"localhost:{out_port}")
+            # On Windows, PyZMQ needs a selector loop. Do not change the
+            # process-wide asyncio event-loop policy (deprecated in 3.14).
+            self.dispatcher = RemoteDispatcher(
+                f"localhost:{out_port}",
+                loop=asyncio.SelectorEventLoop() if sys.platform == "win32" else None,
+            )
 
             # 4. Start Dispatcher in a Thread
             # We store the thread as self.dispatcher_thread to join it later
