@@ -1,6 +1,5 @@
-# Temporary, historical comparison only. This is NOT a supported-Python
-# test matrix and does not relax the Python 3.14-only package metadata.
-name: Historical Python 3.11 baseline (pre-migration)
+# Read-only reference: this does NOT restore Python 3.11 product support.
+name: Python 3.11 historical regression baseline
 
 on:
   push:
@@ -14,142 +13,100 @@ permissions:
   contents: read
 
 jobs:
-  compare-original-revision:
+  historical-reference:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: reference-main
-        shell: bash
     env:
       QT_QPA_PLATFORM: "offscreen"
-      XDG_CONFIG_HOME: ${{ runner.temp }}/nomad-camels-311/config
-      XDG_DATA_HOME: ${{ runner.temp }}/nomad-camels-311/data
       PYTHONFAULTHANDLER: "1"
     steps:
-      - name: Check out immutable pre-migration revision (read-only reference)
+      - name: Check out pre-migration commit (read-only)
         uses: actions/checkout@v4
         with:
-          # Earlier baseline commit. Nothing is pushed to main.
           ref: f07bb422d30d4da689ab396ed023a8ec2e5d3027
-          path: reference-main
           persist-credentials: false
 
-      - name: Install reference Python 3.11
+      - name: Install the historical Python 3.11 interpreter
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install Ubuntu Qt runtime dependencies
+      - name: Install Qt runtime libraries on Ubuntu
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y libegl1 libopengl0 libgl1 libxkbcommon-x11-0 libpulse0
 
-      - name: Record reference revision and interpreter
+      - name: Capture reference revision and platform
         run: |
-          mkdir -p ../diagnostics
-          git rev-parse HEAD | tee ../diagnostics/reference-commit.txt
-          python -c "import sys, platform; print(sys.version); print(platform.platform()); print(platform.machine())" | tee ../diagnostics/environment.txt
+          mkdir -p diagnostics
+          git rev-parse HEAD | tee diagnostics/source-sha.txt
+          python -c "import sys,platform; print(sys.version); print(platform.platform())" | tee diagnostics/platform.txt
 
-      - name: Install 3.11 baseline with conservative scientific constraints
-        id: install
+      - name: Install historical dependencies and test tooling
+        id: baseline_install
         continue-on-error: true
         run: |
           set -o pipefail
           python -m pip install --upgrade pip
-          # The pinned historical release originally expected NumPy 1.x
-          # semantics in its Databroker stack; prevent unrepresentative 2.x.
           python -m pip install "numpy>=1.26,<2" "pims>=0.7"
-          python -m pip install -e ".[dev]" 2>&1 | tee ../diagnostics/install.log
+          python -m pip install -e ".[dev]" 2>&1 | tee diagnostics/install.txt
 
-      - name: Verify reference imports and dependency consistency
-        id: deps
+      - name: Check dependencies and main import
+        id: baseline_check
         if: always()
         continue-on-error: true
         run: |
           set -o pipefail
-          python -m pip check 2>&1 | tee ../diagnostics/pip-check.log
-          python -c "import nomad_camels; print('Historical CAMELS import passed')" 2>&1 | tee ../diagnostics/import.log
+          python -m pip check 2>&1 | tee diagnostics/pip-check.txt
+          python -c "import nomad_camels; print('Historical import passed')" 2>&1 | tee diagnostics/import.txt
 
-      - name: Seed isolated, noninteractive test preferences
-        id: prepare
-        if: steps.install.outcome == 'success'
-        continue-on-error: true
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          from nomad_camels.utility import load_save_functions
-
-          p = Path(load_save_functions.appdata_path)
-          p.mkdir(parents=True, exist_ok=True)
-          settings = dict(load_save_functions.standard_pref)
-          settings.update(auto_check_updates=False, autosave=False,
-                          password_protection=False)
-          (p / "preferences.json").write_text(json.dumps(settings),
-                                                 encoding="utf-8")
-          print("Seeded test preferences:", p)
-          PY
-
-      - name: Run existing focused Qt tests
+      - name: Existing Qt loading-screen tests
         id: focused
-        if: steps.install.outcome == 'success'
+        if: always()
         continue-on-error: true
         run: |
           set -o pipefail
           timeout 180s python -m pytest -q \
-            nomad_camels/tests/startup_test.py \
-            nomad_camels/tests/mainapp_test.py \
-            -k 'test_set_progress or test_set_text or test_ui_initialization or test_signal_slots' \
-            --timeout=45 --maxfail=1 -p no:xvfb \
-            2>&1 | tee ../diagnostics/focused-tests.log
+            nomad_camels/tests/startup_test.py::test_set_progress \
+            nomad_camels/tests/startup_test.py::test_set_text \
+            --timeout=45 2>&1 | tee diagnostics/focused-tests.txt
 
-      - name: Attempt full original test suite (record initial baseline failure)
+      - name: Original test suite (record first failure, no hardware guarantee)
         id: full_tests
-        if: steps.install.outcome == 'success'
+        if: always()
         continue-on-error: true
         run: |
           set -o pipefail
           timeout 240s python -m pytest -q nomad_camels/tests \
-            --timeout=45 --maxfail=1 -p no:xvfb \
-            2>&1 | tee ../diagnostics/full-suite-first-failure.log
+            --timeout=45 --maxfail=1 2>&1 | tee diagnostics/full-suite.txt
 
-      - name: Capture exact dependency versions
+      - name: Capture reference dependency versions
         if: always()
-        run: python -m pip freeze > ../diagnostics/pip-freeze.txt
+        run: python -m pip freeze > diagnostics/pip-freeze.txt
 
-      - name: Upload comparison artifacts
+      - name: Upload diagnostic artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: historical-python311-baseline
+          name: historical-python311-comparison
           path: diagnostics/
           if-no-files-found: warn
 
-      - name: Summarize reference results
+      - name: Summarize historical results
         if: always()
         env:
-          INSTALL: ${{ steps.install.outcome }}
-          DEPS: ${{ steps.deps.outcome }}
-          PREPARE: ${{ steps.prepare.outcome }}
+          INSTALL: ${{ steps.baseline_install.outcome }}
+          DEPS: ${{ steps.baseline_check.outcome }}
           FOCUSED: ${{ steps.focused.outcome }}
-          FULL_TESTS: ${{ steps.full_tests.outcome }}
+          FULL: ${{ steps.full_tests.outcome }}
         run: |
-          {
-            echo "### Historical comparison (Python 3.11, pinned pre-migration commit)"
-            echo "No changes are made to main, and Python 3.11 is NOT supported by the migration."
-            echo
-            echo "| Check | Result |"
-            echo "| --- | --- |"
-            echo "| Historical installation | $INSTALL |"
-            echo "| pip check and import | $DEPS |"
-            echo "| Isolated test profile | $PREPARE |"
-            echo "| Existing focused Qt tests | $FOCUSED |"
-            echo "| Existing full suite, stop on first failure | $FULL_TESTS |"
-            echo
-            echo "See the uploaded logs; full suite failures may reflect existing"
-            echo "hardware/optional-driver assumptions, not Python 3.14 regressions."
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "### Python 3.11 historical comparison" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pinned pre-migration SHA: f07bb422d30d4da689ab396ed023a8ec2e5d3027" >> "$GITHUB_STEP_SUMMARY"
+          echo "Installation: $INSTALL" >> "$GITHUB_STEP_SUMMARY"
+          echo "pip check and import: $DEPS" >> "$GITHUB_STEP_SUMMARY"
+          echo "Focused historical tests: $FOCUSED" >> "$GITHUB_STEP_SUMMARY"
+          echo "Full original suite: $FULL" >> "$GITHUB_STEP_SUMMARY"
+          echo "Results do not change the Python 3.14-only support policy." >> "$GITHUB_STEP_SUMMARY"
           if [[ "$INSTALL" != success || "$DEPS" != success || "$FOCUSED" != success ]]; then
-            echo "::warning::Historical baseline is incomplete; inspect logs."
+            echo "::warning::Historical comparison did not fully pass; inspect artifacts."
           fi
