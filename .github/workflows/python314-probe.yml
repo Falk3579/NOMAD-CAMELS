@@ -105,7 +105,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'generated'], timeout=30, check=True)" 2>&1 | tee diagnostics/generated-smoke.log
+          python -u dev_tools/run_python314_smoke.py generated 30 2>&1 | tee diagnostics/generated-smoke.log
 
       - name: Bluesky and ZeroMQ simulated run
         id: zmq_check
@@ -113,7 +113,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'zmq'], timeout=90, check=True)" 2>&1 | tee diagnostics/zmq-smoke.log
+          python -u dev_tools/run_python314_smoke.py zmq 90 2>&1 | tee diagnostics/zmq-smoke.log
 
       - name: Simulated run and CAMELS HDF5 round trip
         id: hdf5_check
@@ -121,7 +121,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'hdf5'], timeout=90, check=True)" 2>&1 | tee diagnostics/hdf5-smoke.log
+          python -u dev_tools/run_python314_smoke.py hdf5 90 2>&1 | tee diagnostics/hdf5-smoke.log
 
       - name: Qt main window and proxy startup / shutdown
         id: gui_check
@@ -129,7 +129,7 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'gui'], timeout=120, check=True)" 2>&1 | tee diagnostics/gui-smoke.log
+          python -u dev_tools/run_python314_smoke.py gui 120 2>&1 | tee diagnostics/gui-smoke.log
 
       - name: Capture exact installed versions
         if: always()
