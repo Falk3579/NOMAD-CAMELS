@@ -131,6 +131,14 @@ jobs:
           set -o pipefail
           python -u dev_tools/run_python314_smoke.py gui 120 2>&1 | tee diagnostics/gui-smoke.log
 
+      - name: Verify built wheel from a fresh Python 3.14 virtual environment
+        id: wheel_runtime_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -u dev_tools/python314_wheel_probe.py 2>&1 | tee diagnostics/wheel-runtime-smoke.log
+
       - name: Capture exact installed versions
         if: always()
         run: python -m pip freeze > diagnostics/pip-freeze.txt
@@ -155,6 +163,7 @@ jobs:
           ZMQ_CHECK: ${{ steps.zmq_check.outcome }}
           HDF5_CHECK: ${{ steps.hdf5_check.outcome }}
           GUI_CHECK: ${{ steps.gui_check.outcome }}
+          WHEEL_RUNTIME_CHECK: ${{ steps.wheel_runtime_check.outcome }}
         run: |
           echo "Wheel-only install: $WHEEL_INSTALL"
           echo "Source fallback: $FALLBACK_INSTALL"
@@ -165,6 +174,7 @@ jobs:
           echo "ZMQ simulated run: $ZMQ_CHECK"
           echo "HDF5 export: $HDF5_CHECK"
           echo "GUI startup: $GUI_CHECK"
+          echo "Fresh built wheel: $WHEEL_RUNTIME_CHECK"
           {
             echo "### Python 3.14 probe (${{ matrix.os }})"
             echo "| Check | Outcome |"
@@ -178,8 +188,9 @@ jobs:
             echo "| simulated Bluesky / ZeroMQ | $ZMQ_CHECK |"
             echo "| HDF5 export and reopen | $HDF5_CHECK |"
             echo "| GUI startup and shutdown | $GUI_CHECK |"
+            echo "| Fresh built wheel with resources, HDF5 and GUI | $WHEEL_RUNTIME_CHECK |"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$WHEEL_INSTALL" != "success" || "$PIP_CHECK" != "success" || "$IMPORT_CHECK" != "success" || "$BUILD_CHECK" != "success" || "$GENERATED_CHECK" != "success" || "$ZMQ_CHECK" != "success" || "$HDF5_CHECK" != "success" || "$GUI_CHECK" != "success" ]]; then
+          if [[ "$WHEEL_INSTALL" != "success" || "$PIP_CHECK" != "success" || "$IMPORT_CHECK" != "success" || "$BUILD_CHECK" != "success" || "$GENERATED_CHECK" != "success" || "$ZMQ_CHECK" != "success" || "$HDF5_CHECK" != "success" || "$GUI_CHECK" != "success" || "$WHEEL_RUNTIME_CHECK" != "success" ]]; then
             echo "::error::Python 3.14 core packaging probe has failures. Inspect diagnostic artifacts."
             exit 1
           fi
