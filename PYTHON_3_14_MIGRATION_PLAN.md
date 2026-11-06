@@ -7,6 +7,8 @@
 **Target:** standard, GIL-enabled CPython 3.14 on Windows, Linux, and macOS  
 **Priority:** core desktop application and simulated measurements first; hardware drivers last
 
+**Completed/verified checkpoint:** clean Python 3.14 core installation, `pip check`, import and distribution build on Windows, Ubuntu, and macOS in [the packaging probe](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695). Hardware-free runtime smoke probes are being evaluated in [the runtime run](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42244587723); passing runtime behavior is **not yet claimed**.
+
 ## 1. Decisions and definition of done
 
 ### Explicit support decisions
@@ -72,7 +74,7 @@ Python 3.14 support is complete when:
 **Objective:** identify the first real blockers before making broad upgrades.
 
 - [ ] Run `python -m pip check` and the current tests under a known-good **existing** CAMELS environment, if available; record current behavior for comparison. This is a historical baseline, **not** a continued support promise for <3.14.
-- [ ] Record the commit, OS/architecture, Python build, and full `pip freeze` or `poetry show --tree` for baseline and migration environments. Preserve logs as CI artifacts, not committed binary files.
+- [x] Record the commit, OS/architecture, Python build, and full `pip freeze` or `poetry show --tree` for baseline and migration environments. Preserve logs as CI artifacts, not committed binary files.
 - [ ] Probe fresh Python 3.14 virtual environments on Windows, Ubuntu, and macOS. Initially attempt installing the project with a **temporary local metadata relaxation** to expose dependency incompatibilities. Do not publish that metadata change yet.
 - [ ] Separate failures into: (a) Requires-Python/solver, (b) no cp314 wheel/source build, (c) package import, (d) app/runtime, (e) optional extra, (f) hardware-only.
 - [ ] Create a concise compatibility ledger listing dependency, required feature, resolved 3.14 version, platform, status, and evidence.
@@ -84,9 +86,9 @@ Python 3.14 support is complete when:
 
 **Primary files:** `pyproject.toml`, `requirements.txt`, packaging/build configuration.
 
-- [ ] Change `[project].requires-python` to `>=3.14,<3.15` and add the `Programming Language :: Python :: 3.14` classifier. Remove obsolete compatibility claims.
-- [ ] Select a Python 3.14-capable PySide6 version (at least 6.10.1); consider pairing with a matching PySide6 Addons/Essentials release via dependency resolver. Do not retain `<6.9`.
-- [ ] Replace all Python-version-specific dependency branches targeting 3.9–3.13 with a single 3.14 baseline, except any markers still required for OS distinctions.
+- [x] Change `[project].requires-python` to `>=3.14,<3.15` and add the `Programming Language :: Python :: 3.14` classifier. Remove obsolete compatibility claims.
+- [x] Select a Python 3.14-capable PySide6 version (at least 6.10.1); consider pairing with a matching PySide6 Addons/Essentials release via dependency resolver. Do not retain `<6.9`.
+- [x] Replace all Python-version-specific dependency branches targeting 3.9–3.13 with a single 3.14 baseline, except any markers still required for OS distinctions.
 - [ ] Set NumPy and compiled scientific dependencies using versions with verified Python 3.14 builds. Explicitly test NumPy 2.x compatibility; avoid assuming an existing 1.26 minimum works.
 - [ ] Resolve `bluesky`, `ophyd`, `pyzmq`, `event-model` and `msgpack(-numpy)` together. Prefer a supported current Bluesky version; preserve the CAMELS RunEngine/ZMQ interfaces and avoid an unnecessary Bluesky API rewrite.
 - [ ] Try to retain Databroker 1.x first. If it or its transitive dependencies cannot resolve/run on 3.14, document the exact blocker and choose the **smallest possible** adaptation or compatibility shim. A full Tiled migration is a separate decision.
@@ -101,12 +103,12 @@ Python 3.14 support is complete when:
 
 **Primary files:** `nomad_camels/MainApp_v2.py`, `nomad_camels/bluesky_handling/protocol_builder.py`, `nomad_camels/main_classes/plot_proxy.py`, `nomad_camels/tests/protocol_test.py`.
 
-- [ ] Remove deprecated calls to `asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())` from the main window, generated protocol template, and test setup.
+- [x] Remove deprecated calls to `asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())` from the main window, generated protocol template, and test setup.
 - [ ] Determine which component actually owns and starts each event loop. Where a selector loop is needed, create it **locally in the correct thread** (e.g. an explicit `loop_factory` via `asyncio.Runner`/`asyncio.run` for owned async entry points); do **not** blindly wrap a synchronous Qt event loop in `asyncio.run`.
 - [ ] Check how the chosen Bluesky `RemoteDispatcher` and PyZMQ versions create/consume event loops and which thread invokes `dispatcher.start()`. Prefer documented upstream APIs.
 - [ ] Test cancellation, unsubscribing, dispatcher closure, ZMQ socket/context closure, and application restart, especially after exceptions.
 - [ ] Exercise Python 3.14 default `forkserver` on Linux and `spawn` on Windows/macOS. Make subprocess targets/imports picklable; ensure process/Queue/port handoff is robust without relying on inherited Qt state.
-- [ ] Replace any unbounded startup wait (for example `port_queue.get()` without a timeout) with bounded waits and useful diagnostics; ensure the child can be terminated on failure.
+- [x] Replace any unbounded startup wait (for example `port_queue.get()` without a timeout) with bounded waits and useful diagnostics; ensure the child can be terminated on failure.
 - [ ] Verify generated standalone protocol scripts use the same corrected startup/cleanup logic. Avoid duplicated divergent setup code if a shared helper can be introduced safely.
 - [ ] Add a subprocess integration test: RunEngine -> Publisher -> proxy -> RemoteDispatcher receives `start`, `descriptor`, `event`, and `stop` (or relevant stream documents), and all processes/threads exit cleanly.
 - [ ] Test on actual Windows as the Windows selector/proactor difference is not reproduced on Linux.
