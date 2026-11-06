@@ -64,10 +64,20 @@ def smoke_gui():
     app = QApplication.instance() or QApplication([])
     old_stdout, old_stderr = sys.stdout, sys.stderr
     window = None
+
+    def fail_on_unexpected_dialog(*args, **kwargs):
+        raise RuntimeError(
+            f"Unexpected modal warning during CI GUI smoke: {args!r}, {kwargs!r}"
+        )
+
     try:
         with (
             patch("nomad_camels.utility.update_camels.show_release_notes"),
             patch("nomad_camels.utility.update_camels.auto_update"),
+            patch(
+                "nomad_camels.MainApp_v2.warn_popup.WarnPopup",
+                side_effect=fail_on_unexpected_dialog,
+            ),
         ):
             window = MainWindow(start_proxy_bool=True)
         window.show()
