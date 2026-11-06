@@ -88,6 +88,7 @@ def smoke_gui():
         assert window.isVisible(), "Main window did not become visible"
         assert "NOMAD CAMELS" in window.windowTitle()
         assert not window.pushButton_pause.icon().isNull()
+        assert not window.label_logo.pixmap().isNull(), "Main window logo image is missing"
 
         # Qt must not destroy a QThread that is still importing modules.
         if hasattr(window, "importer_thread"):
