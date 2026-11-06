@@ -147,11 +147,8 @@ standard_start_string += """
         import multiprocessing
         import threading
         import asyncio
+        import queue
         from bluesky.callbacks.zmq import RemoteDispatcher, Publisher
-
-        # Apply Windows asyncio fix (prevents the ProactorEventLoop warning)
-        if sys.platform == "win32":
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         # Setup queue to receive dynamic ports
         port_queue = multiprocessing.Queue()
         # Start the Proxy Process
@@ -161,15 +158,28 @@ standard_start_string += """
             daemon=True,
         )
         proxy_proc.start()
-        # Give the proxy 200ms to bind to the ports
-        time.sleep(0.2)
-        # Retrieve the dynamically assigned ports
-        in_port, out_port = port_queue.get()
+        # A failed proxy must not hang a standalone protocol forever.
+        try:
+            in_port, out_port = port_queue.get(timeout=15)
+        except queue.Empty as exc:
+            proxy_proc.terminate()
+            proxy_proc.join(timeout=2)
+            raise RuntimeError(
+                "ZeroMQ proxy did not report its ports within 15 seconds"
+            ) from exc
+        finally:
+            port_queue.close()
+            port_queue.join_thread()
         print(f"Proxy started on ports: Publisher={in_port}, Dispatcher={out_port}")
         # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
         # Measurements only create their own if the Python script is run 'standalone', so without the main app.
         publisher = Publisher(f"localhost:{in_port}")
-        dispatcher = RemoteDispatcher(f"localhost:{out_port}")
+        # Windows PyZMQ requires a selector loop; avoid the deprecated
+        # process-global event-loop policy.
+        dispatcher = RemoteDispatcher(
+            f"localhost:{out_port}",
+            loop=asyncio.SelectorEventLoop() if sys.platform == "win32" else None,
+        )
 
         # 4. Start Dispatcher in a Thread
         # We store the thread as dispatcher_thread to join it later
