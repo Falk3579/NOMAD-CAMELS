@@ -27,3 +27,20 @@ def run_zmq_proxy(queue: multiprocessing.Queue):
         frontend.close()
         backend.close()
         context.term()
+
+
+def run_remote_dispatcher(dispatcher):
+    """Run Bluesky's ZMQ dispatcher and handle expected stop cancellation.
+
+    RemoteDispatcher.stop() cancels its polling task. In Bluesky 1.16
+    dispatcher.start() propagates that asyncio.CancelledError *after* its
+    cleanup handler closes the loop and sockets. Normal shutdown should not
+    produce an unhandled traceback in a background thread.
+    """
+    import asyncio
+
+    try:
+        dispatcher.start()
+    except asyncio.CancelledError:
+        if not dispatcher.closed:
+            raise
