@@ -256,7 +256,15 @@ def main():
             os.environ[name] = str(target)
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         if args.case == "gui":
-            smoke_gui()
+            # If a Qt modal dialog blocks CI, retain a useful Python stack
+            # instead of reporting only the outer subprocess timeout.
+            import faulthandler
+
+            faulthandler.dump_traceback_later(25, repeat=True)
+            try:
+                smoke_gui()
+            finally:
+                faulthandler.cancel_dump_traceback_later()
         elif args.case == "zmq":
             smoke_zmq()
         elif args.case == "hdf5":
