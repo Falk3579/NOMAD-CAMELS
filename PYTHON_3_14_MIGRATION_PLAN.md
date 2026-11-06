@@ -78,8 +78,8 @@ Python 3.14 support is complete when:
 - [ ] Run `python -m pip check` and the current tests under a known-good **existing** CAMELS environment, if available; record current behavior for comparison. This is a historical baseline, **not** a continued support promise for <3.14.
 - [x] Record the commit, OS/architecture, Python build, and full `pip freeze` or `poetry show --tree` for baseline and migration environments. Preserve logs as CI artifacts, not committed binary files.
 - [x] Probe fresh CPython 3.14 environments on Windows, Ubuntu, and macOS. All three [core installation jobs](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695) passed wheel-only dependency installation, `pip check`, module import, and wheel/sdist builds. The original temporary-metadata-relaxation proposal was superseded by the committed Python-3.14-only metadata; no temporary relaxation was used. This verifies **installation**, not macOS runtime or hardware behavior.
-- [ ] Separate failures into: (a) Requires-Python/solver, (b) no cp314 wheel/source build, (c) package import, (d) app/runtime, (e) optional extra, (f) hardware-only.
-- [ ] Create a concise compatibility ledger listing dependency, required feature, resolved 3.14 version, platform, status, and evidence.
+- [x] Separate Python 3.14 failures into metadata/resolver, missing wheels/source builds, OS import libraries, runtime/API changes, optional extras, and hardware-only cases. See the [compatibility ledger](dev_tools/PYTHON314_COMPATIBILITY_LEDGER.md) for evidence, fixed scope and unverified cases.
+- [x] Create a [Python 3.14 compatibility ledger](dev_tools/PYTHON314_COMPATIBILITY_LEDGER.md) with dependencies, needed features, sample resolved versions, platform coverage, fix status, and linked CI evidence. Not all outstanding tests are declared complete.
 - [ ] Verify target architectures (for example x86_64/AMD64 and macOS arm64); do not infer support for untested architectures.
 
 **Exit criterion:** a reproducible install log and a ranked list of specific Python 3.14 blockers exist.
