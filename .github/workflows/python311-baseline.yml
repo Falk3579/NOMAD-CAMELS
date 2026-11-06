@@ -49,7 +49,9 @@ jobs:
           set -o pipefail
           python -m pip install --upgrade pip
           python -m pip install "numpy>=1.26,<2" "pims>=0.7"
-          python -m pip install -e ".[dev,api]" 2>&1 | tee diagnostics/install.txt
+          # Keep a historical Bluesky API line and NumPy 1.x for comparison.
+          # Without bounds, the old code fails on Py3.11 with Bluesky 1.16.
+          python -m pip install -e ".[dev,api]" "bluesky>=1.15,<1.16" "numpy>=1.26,<2" 2>&1 | tee diagnostics/install.txt
 
       - name: Check dependencies and main import
         id: baseline_check
