@@ -121,7 +121,11 @@ def smoke_zmq():
         deadline = time.monotonic() + 8
         while not dispatcher.loop.is_running() and time.monotonic() < deadline:
             time.sleep(0.05)
-        assert dispatcher.loop.is_running(), "RemoteDispatcher event loop did not start"
+        assert dispatcher.loop.is_running(), (
+            "RemoteDispatcher event loop did not start; "
+            f"thread_alive={dispatcher_thread.is_alive()}, "
+            f"errors={callback_errors!r}"
+        )
 
         # PUB/SUB has no handshake: permit the subscriber to attach.
         time.sleep(0.75)
