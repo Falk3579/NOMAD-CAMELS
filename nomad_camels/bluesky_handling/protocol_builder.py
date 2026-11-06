@@ -143,7 +143,7 @@ standard_start_string += "\tbec = BestEffortCallback()\n"
 standard_start_string += "\tRE.subscribe(bec)\n"
 standard_start_string += """
     if not (dispatcher and publisher):
-        from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
+        from nomad_camels.main_classes.plot_proxy import run_zmq_proxy, run_remote_dispatcher
         import multiprocessing
         import threading
         import asyncio
@@ -184,7 +184,8 @@ standard_start_string += """
         # 4. Start Dispatcher in a Thread
         # We store the thread as dispatcher_thread to join it later
         dispatcher_thread = threading.Thread(
-            target=dispatcher.start,
+            target=run_remote_dispatcher,
+            args=(dispatcher,),
             daemon=True,
         )
         dispatcher_thread.start()
