@@ -1,0 +1,125 @@
+# Temporary diagnostic workflow for the Python 3.14 migration branch.
+# The regular CI is migrated in a later work package.
+name: Python 3.14 core dependency probe
+
+on:
+  push:
+    branches:
+      - feature/python-3-14-support
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-install:
+    name: Core install / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      QT_QPA_PLATFORM: "offscreen"
+
+    steps:
+      - name: Check out migration branch
+        uses: actions/checkout@v4
+
+      - name: Set up CPython 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Record interpreter and environment
+        run: |
+          mkdir -p diagnostics
+          python -c "import sys, platform; print('version:', sys.version); print('executable:', sys.executable); print('platform:', platform.platform()); print('machine:', platform.machine())" | tee diagnostics/environment.txt
+          python -m pip --version | tee -a diagnostics/environment.txt
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build
+
+      - name: Install core, wheels only (detect missing cp314 wheels)
+        id: wheel_install
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m pip install --only-binary=:all: -e . 2>&1 | tee diagnostics/core-wheel-only.log
+
+      - name: Retry with source distributions if no wheel is available
+        id: fallback_install
+        if: steps.wheel_install.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m pip install -e . 2>&1 | tee diagnostics/core-source-fallback.log
+
+      - name: Validate installed dependencies
+        id: pip_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m pip check 2>&1 | tee diagnostics/pip-check.log
+
+      - name: Verify CAMELS import without starting the GUI
+        id: import_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -c "import nomad_camels; print('CAMELS import OK')" 2>&1 | tee diagnostics/import.log
+
+      - name: Build wheel and source distribution
+        id: build_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m build --wheel --sdist 2>&1 | tee diagnostics/build.log
+
+      - name: Capture exact installed versions
+        if: always()
+        run: python -m pip freeze > diagnostics/pip-freeze.txt
+
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python314-core-${{ matrix.os }}
+          path: diagnostics/
+          if-no-files-found: warn
+
+      - name: Report probe status
+        if: always()
+        env:
+          WHEEL_INSTALL: ${{ steps.wheel_install.outcome }}
+          FALLBACK_INSTALL: ${{ steps.fallback_install.outcome }}
+          PIP_CHECK: ${{ steps.pip_check.outcome }}
+          IMPORT_CHECK: ${{ steps.import_check.outcome }}
+          BUILD_CHECK: ${{ steps.build_check.outcome }}
+        run: |
+          echo "Wheel-only install: $WHEEL_INSTALL"
+          echo "Source fallback: $FALLBACK_INSTALL"
+          echo "pip check: $PIP_CHECK"
+          echo "CAMELS import: $IMPORT_CHECK"
+          echo "Distribution build: $BUILD_CHECK"
+          {
+            echo "### Python 3.14 probe (${{ matrix.os }})"
+            echo "| Check | Outcome |"
+            echo "| --- | --- |"
+            echo "| Wheel-only core install | $WHEEL_INSTALL |"
+            echo "| Source fallback | $FALLBACK_INSTALL |"
+            echo "| pip check | $PIP_CHECK |"
+            echo "| import | $IMPORT_CHECK |"
+            echo "| build | $BUILD_CHECK |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$WHEEL_INSTALL" != "success" || "$PIP_CHECK" != "success" || "$IMPORT_CHECK" != "success" || "$BUILD_CHECK" != "success" ]]; then
+            echo "::error::Python 3.14 core packaging probe has failures. Inspect diagnostic artifacts."
+            exit 1
+          fi
