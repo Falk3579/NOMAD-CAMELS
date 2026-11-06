@@ -1,0 +1,155 @@
+# Temporary, historical comparison only. This is NOT a supported-Python
+# test matrix and does not relax the Python 3.14-only package metadata.
+name: Historical Python 3.11 baseline (pre-migration)
+
+on:
+  push:
+    branches:
+      - feature/python-3-14-support
+    paths:
+      - .github/workflows/python311-baseline.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare-original-revision:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: reference-main
+        shell: bash
+    env:
+      QT_QPA_PLATFORM: "offscreen"
+      XDG_CONFIG_HOME: ${{ runner.temp }}/nomad-camels-311/config
+      XDG_DATA_HOME: ${{ runner.temp }}/nomad-camels-311/data
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - name: Check out immutable pre-migration revision (read-only reference)
+        uses: actions/checkout@v4
+        with:
+          # Earlier baseline commit. Nothing is pushed to main.
+          ref: f07bb422d30d4da689ab396ed023a8ec2e5d3027
+          path: reference-main
+          persist-credentials: false
+
+      - name: Install reference Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ubuntu Qt runtime dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libegl1 libopengl0 libgl1 libxkbcommon-x11-0 libpulse0
+
+      - name: Record reference revision and interpreter
+        run: |
+          mkdir -p ../diagnostics
+          git rev-parse HEAD | tee ../diagnostics/reference-commit.txt
+          python -c "import sys, platform; print(sys.version); print(platform.platform()); print(platform.machine())" | tee ../diagnostics/environment.txt
+
+      - name: Install 3.11 baseline with conservative scientific constraints
+        id: install
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m pip install --upgrade pip
+          # The pinned historical release originally expected NumPy 1.x
+          # semantics in its Databroker stack; prevent unrepresentative 2.x.
+          python -m pip install "numpy>=1.26,<2" "pims>=0.7"
+          python -m pip install -e ".[dev]" 2>&1 | tee ../diagnostics/install.log
+
+      - name: Verify reference imports and dependency consistency
+        id: deps
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -m pip check 2>&1 | tee ../diagnostics/pip-check.log
+          python -c "import nomad_camels; print('Historical CAMELS import passed')" 2>&1 | tee ../diagnostics/import.log
+
+      - name: Seed isolated, noninteractive test preferences
+        id: prepare
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from nomad_camels.utility import load_save_functions
+
+          p = Path(load_save_functions.appdata_path)
+          p.mkdir(parents=True, exist_ok=True)
+          settings = dict(load_save_functions.standard_pref)
+          settings.update(auto_check_updates=False, autosave=False,
+                          password_protection=False)
+          (p / "preferences.json").write_text(json.dumps(settings),
+                                                 encoding="utf-8")
+          print("Seeded test preferences:", p)
+          PY
+
+      - name: Run existing focused Qt tests
+        id: focused
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          timeout 180s python -m pytest -q \
+            nomad_camels/tests/startup_test.py \
+            nomad_camels/tests/mainapp_test.py \
+            -k 'test_set_progress or test_set_text or test_ui_initialization or test_signal_slots' \
+            --timeout=45 --maxfail=1 -p no:xvfb \
+            2>&1 | tee ../diagnostics/focused-tests.log
+
+      - name: Attempt full original test suite (record initial baseline failure)
+        id: full_tests
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          timeout 240s python -m pytest -q nomad_camels/tests \
+            --timeout=45 --maxfail=1 -p no:xvfb \
+            2>&1 | tee ../diagnostics/full-suite-first-failure.log
+
+      - name: Capture exact dependency versions
+        if: always()
+        run: python -m pip freeze > ../diagnostics/pip-freeze.txt
+
+      - name: Upload comparison artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: historical-python311-baseline
+          path: diagnostics/
+          if-no-files-found: warn
+
+      - name: Summarize reference results
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          DEPS: ${{ steps.deps.outcome }}
+          PREPARE: ${{ steps.prepare.outcome }}
+          FOCUSED: ${{ steps.focused.outcome }}
+          FULL_TESTS: ${{ steps.full_tests.outcome }}
+        run: |
+          {
+            echo "### Historical comparison (Python 3.11, pinned pre-migration commit)"
+            echo "No changes are made to main, and Python 3.11 is NOT supported by the migration."
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Historical installation | $INSTALL |"
+            echo "| pip check and import | $DEPS |"
+            echo "| Isolated test profile | $PREPARE |"
+            echo "| Existing focused Qt tests | $FOCUSED |"
+            echo "| Existing full suite, stop on first failure | $FULL_TESTS |"
+            echo
+            echo "See the uploaded logs; full suite failures may reflect existing"
+            echo "hardware/optional-driver assumptions, not Python 3.14 regressions."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$INSTALL" != success || "$DEPS" != success || "$FOCUSED" != success ]]; then
+            echo "::warning::Historical baseline is incomplete; inspect logs."
+          fi
