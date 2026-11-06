@@ -15,7 +15,7 @@ from threading import Thread
 import asyncio
 from zmq.error import ZMQError
 from bluesky.callbacks.zmq import RemoteDispatcher, Publisher
-from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
+from nomad_camels.main_classes.plot_proxy import run_zmq_proxy, run_remote_dispatcher
 from nomad_camels.tests.test_helper_functions import ensure_demo_in_devices
 import multiprocessing
 import threading
@@ -63,7 +63,8 @@ def zmq_setup():
     # 4. Start Dispatcher in a Thread
     # We store the thread as dispatcher_thread to join it later
     dispatcher_thread = threading.Thread(
-        target=dispatcher.start,
+        target=run_remote_dispatcher,
+        args=(dispatcher,),
         daemon=True,
     )
     dispatcher_thread.start()
