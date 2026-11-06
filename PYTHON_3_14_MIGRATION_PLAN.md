@@ -90,6 +90,7 @@ Python 3.14 support is complete when:
 
 - [x] Change `[project].requires-python` to `>=3.14,<3.15` and add the `Programming Language :: Python :: 3.14` classifier. Remove obsolete compatibility claims.
 - [x] Select a Python 3.14-capable PySide6 version (at least 6.10.1); consider pairing with a matching PySide6 Addons/Essentials release via dependency resolver. Do not retain `<6.9`.
+- [x] Fix wheel resource packaging and case-sensitive GUI image filenames: include `graphics/`, Qt `.ui` and `.qrc`, and API `.yaml` resources in Poetry wheels; adjust startup/main-window logo paths to existing lowercase filenames. An isolated built-wheel **Ubuntu** import/resource/GUI check passes. [CI evidence](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42251913059).
 - [x] Replace all Python-version-specific dependency branches targeting 3.9–3.13 with a single 3.14 baseline, except any markers still required for OS distinctions.
 - [ ] Set NumPy and compiled scientific dependencies using versions with verified Python 3.14 builds. Explicitly test NumPy 2.x compatibility; avoid assuming an existing 1.26 minimum works.
 - [x] Resolve `bluesky`, `ophyd`, `pyzmq`, `event-model` and `msgpack(-numpy)` together. Prefer a supported current Bluesky version; preserve the CAMELS RunEngine/ZMQ interfaces and avoid an unnecessary Bluesky API rewrite.
@@ -98,7 +99,7 @@ Python 3.14 support is complete when:
 - [x] Validate `suitcase-nomad-camels-hdf5` and transitive HDF5 packages for Python 3.14 wheels and actual export behavior.
 - [ ] Resolve **core first**. Then install each extra independently: `api`, `material`, `visa`, `dash`, `dev`. An optional extra should not force unsupported dependencies on core users.
 - [ ] Decide whether to generate `requirements.txt` from authoritative metadata, reduce it to a documented constraint set, or remove it; eliminate incompatible old pins.
-- [ ] Test an sdist and wheel build (`python -m build`); install the resulting wheel into a fresh 3.14 environment and run `pip check`.
+- [x] Test an sdist and wheel build (`python -m build`); install the resulting wheel into a fresh 3.14 environment and run `pip check`. **Ubuntu Python 3.14 passed the isolated wheel installation, `pip check`, packaged GUI resources, GUI startup/shutdown, and HDF5 regression.** [CI evidence](https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42251913059); Windows/macOS remain separate platform acceptance gates.
 
 **Exit criterion:** clean Python 3.14 core install and wheel build succeed on the target OSes; each unsupported optional extra has an explicit ticket and does not break core installation.
 
