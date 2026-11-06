@@ -1,6 +1,6 @@
 # Temporary diagnostic workflow for the Python 3.14 migration branch.
 # The regular CI is migrated in a later work package.
-name: Python 3.14 core dependency probe
+name: Python 3.14 core and runtime probes
 
 on:
   push:
@@ -13,7 +13,8 @@ permissions:
 
 jobs:
   core-install:
-    name: Core install / ${{ matrix.os }}
+    timeout-minutes: 20
+    name: Core and runtime / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -89,6 +90,38 @@ jobs:
           set -o pipefail
           python -m build --wheel --sdist 2>&1 | tee diagnostics/build.log
 
+      - name: Generated protocol template
+        id: generated_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'generated'], timeout=30, check=True)" 2>&1 | tee diagnostics/generated-smoke.log
+
+      - name: Bluesky and ZeroMQ simulated run
+        id: zmq_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'zmq'], timeout=90, check=True)" 2>&1 | tee diagnostics/zmq-smoke.log
+
+      - name: Simulated run and CAMELS HDF5 round trip
+        id: hdf5_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'hdf5'], timeout=90, check=True)" 2>&1 | tee diagnostics/hdf5-smoke.log
+
+      - name: Qt main window and proxy startup / shutdown
+        id: gui_check
+        if: always()
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python -c "import subprocess,sys; subprocess.run([sys.executable, 'dev_tools/python314_runtime_smoke.py', 'gui'], timeout=120, check=True)" 2>&1 | tee diagnostics/gui-smoke.log
+
       - name: Capture exact installed versions
         if: always()
         run: python -m pip freeze > diagnostics/pip-freeze.txt
@@ -109,12 +142,20 @@ jobs:
           PIP_CHECK: ${{ steps.pip_check.outcome }}
           IMPORT_CHECK: ${{ steps.import_check.outcome }}
           BUILD_CHECK: ${{ steps.build_check.outcome }}
+          GENERATED_CHECK: ${{ steps.generated_check.outcome }}
+          ZMQ_CHECK: ${{ steps.zmq_check.outcome }}
+          HDF5_CHECK: ${{ steps.hdf5_check.outcome }}
+          GUI_CHECK: ${{ steps.gui_check.outcome }}
         run: |
           echo "Wheel-only install: $WHEEL_INSTALL"
           echo "Source fallback: $FALLBACK_INSTALL"
           echo "pip check: $PIP_CHECK"
           echo "CAMELS import: $IMPORT_CHECK"
           echo "Distribution build: $BUILD_CHECK"
+          echo "Generated protocol: $GENERATED_CHECK"
+          echo "ZMQ simulated run: $ZMQ_CHECK"
+          echo "HDF5 export: $HDF5_CHECK"
+          echo "GUI startup: $GUI_CHECK"
           {
             echo "### Python 3.14 probe (${{ matrix.os }})"
             echo "| Check | Outcome |"
@@ -124,8 +165,12 @@ jobs:
             echo "| pip check | $PIP_CHECK |"
             echo "| import | $IMPORT_CHECK |"
             echo "| build | $BUILD_CHECK |"
+            echo "| generated protocol template | $GENERATED_CHECK |"
+            echo "| simulated Bluesky / ZeroMQ | $ZMQ_CHECK |"
+            echo "| HDF5 export and reopen | $HDF5_CHECK |"
+            echo "| GUI startup and shutdown | $GUI_CHECK |"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$WHEEL_INSTALL" != "success" || "$PIP_CHECK" != "success" || "$IMPORT_CHECK" != "success" || "$BUILD_CHECK" != "success" ]]; then
+          if [[ "$WHEEL_INSTALL" != "success" || "$PIP_CHECK" != "success" || "$IMPORT_CHECK" != "success" || "$BUILD_CHECK" != "success" || "$GENERATED_CHECK" != "success" || "$ZMQ_CHECK" != "success" || "$HDF5_CHECK" != "success" || "$GUI_CHECK" != "success" ]]; then
             echo "::error::Python 3.14 core packaging probe has failures. Inspect diagnostic artifacts."
             exit 1
           fi
