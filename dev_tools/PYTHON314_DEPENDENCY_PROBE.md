@@ -27,7 +27,11 @@ The Ubuntu runner was then amended to install `libegl1`, `libopengl0`, `libgl1`,
 
 Updated workflow: https://github.com/Falk3579/NOMAD-CAMELS/actions/runs/42242433695
 
-**Important:** This report is a snapshot of the initial run, not a promise that the updated run has passed. The linked Actions pages and uploaded diagnostic artifacts are the source of truth for results.
+### Corrected probe results
+
+The updated workflow (commit `adab6049f2dd5cfb86e8fc5a4daf8e979c4830a3`) completed **successfully on Ubuntu and Windows** for each core diagnostic check: wheel-only install, `pip check`, `import nomad_camels`, and wheel/sdist build. Ubuntu's original failure was fixed by installing Qt system libraries. macOS remained queued when these results were recorded, so it has no verified outcome yet.
+
+**Important:** This establishes a Python 3.14 *installation/import/build baseline*, **not** GUI startup, simulated protocol execution, or HDF5 behavior. The linked Actions runs and diagnostic artifacts are the authoritative evidence.
 
 ### Concrete package versions observed on the initial Windows and Ubuntu installs
 
