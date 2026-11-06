@@ -151,27 +151,27 @@ def smoke_zmq():
 
         dispatcher_thread = threading.Thread(target=dispatch, daemon=True)
         dispatcher_thread.start()
-        deadline = time.monotonic() + 8
-        while not dispatcher.loop.is_running() and time.monotonic() < deadline:
-            time.sleep(0.05)
-        if not dispatcher.loop.is_running():
+        # Do not read the dispatcher loop's private running state from the
+        # parent thread: the worker may already be polling despite that
+        # cross-thread readiness check reading false on CPython 3.14.
+        # Validate delivery of actual documents instead.
+        assert dispatcher_thread.is_alive(), (
+            f"RemoteDispatcher worker exited early: {callback_errors!r}"
+        )
+        # PUB/SUB has no handshake: permit the subscriber to attach.
+        time.sleep(1.0)
+        run_engine = RunEngineOverwrite({})
+        simulated_run(run_engine, subscriber=publisher)
+        if not stop_seen.wait(timeout=15):
             import faulthandler
 
             faulthandler.dump_traceback(file=sys.stderr)
             raise AssertionError(
-                "RemoteDispatcher event loop did not start; "
-                f"thread_alive={dispatcher_thread.is_alive()}, "
-                f"errors={callback_errors!r}"
+                "No stop document received; "
+                f"names={[name for name, _ in received]!r}, "
+                f"worker_alive={dispatcher_thread.is_alive()}, "
+                f"dispatcher_errors={callback_errors!r}"
             )
-
-        # PUB/SUB has no handshake: permit the subscriber to attach.
-        time.sleep(0.75)
-        run_engine = RunEngineOverwrite({})
-        simulated_run(run_engine, subscriber=publisher)
-        assert stop_seen.wait(timeout=15), (
-            "No stop document received; got "
-            + repr([name for name, _ in received])
-        )
         names = [name for name, _ in received]
         assert names.count("start") == 1, names
         assert "descriptor" in names, names
