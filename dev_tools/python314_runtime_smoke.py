@@ -234,18 +234,54 @@ def smoke_hdf5(directory: Path):
     )
     outputs = sorted(directory.glob("python314_roundtrip*.h5"))
     assert outputs, "CAMELS suitcase did not produce an HDF5 file"
-    datasets = []
 
+    import numpy as np
+
+    expected_signals = {
+        "camels_python314_sim": 42.0,
+        "camels_python314_aux": 84.0,
+    }
+    primary = run["primary"].read()
+    for name, expected in expected_signals.items():
+        values = np.asarray(primary[name].values).ravel()
+        assert values.size == 2, (name, values)
+        assert np.allclose(values, expected), (name, values)
+
+    datasets = []
+    measurement_data = {}
     with h5py.File(outputs[0], "r") as h5file:
+
         def visit(name, value):
             if isinstance(value, h5py.Dataset):
                 datasets.append((name, value.shape))
+                if any(signal in name for signal in expected_signals):
+                    # Collect actual persisted values, not only dataset names.
+                    measurement_data[name] = np.asarray(value[()])
 
         h5file.visititems(visit)
 
     assert datasets, "HDF5 output contains no datasets"
+    for signal, expected in expected_signals.items():
+        values_found = []
+        for path, values in measurement_data.items():
+            if signal not in path:
+                continue
+            try:
+                numeric_values = np.asarray(values, dtype=float).ravel()
+            except (TypeError, ValueError):
+                continue
+            if numeric_values.size == 2 and np.allclose(numeric_values, expected):
+                values_found.append(path)
+        assert values_found, (
+            f"No persisted dataset matching {signal}={expected} twice. "
+            f"Matching paths: {[path for path in measurement_data if signal in path]!r}"
+        )
+
     assert len(list(run.documents(fill="yes"))) >= 4, "Simulated run documents unavailable on reopen"
-    print(f"PASS: CAMELS HDF5 export/reopen ({outputs[0].name}, {len(datasets)} datasets)")
+    print(
+        f"PASS: CAMELS HDF5 export/reopen and expected signal values "
+        f"({outputs[0].name}, {len(datasets)} datasets)"
+    )
 
 
 def smoke_generated():
