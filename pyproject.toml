@@ -13,6 +13,17 @@ classifiers = [
     "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
 ]
 
+[tool.poetry]
+# Poetry does not automatically include non-Python resources in wheels.
+# The GUI needs Qt images/styles, designer UI files and the API schema after
+# installation outside the repository checkout.
+include = [
+    { path = "nomad_camels/graphics/**/*", format = ["sdist", "wheel"] },
+    { path = "nomad_camels/**/*.ui", format = ["sdist", "wheel"] },
+    { path = "nomad_camels/**/*.qrc", format = ["sdist", "wheel"] },
+    { path = "nomad_camels/**/*.yaml", format = ["sdist", "wheel"] },
+]
+
 [tool.poetry.dependencies]
 # == Core/required dependencies (installed by default) ==
 pyside6 = ">=6.10.1,<6.13"
