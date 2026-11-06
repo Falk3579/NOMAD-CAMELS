@@ -32,6 +32,9 @@ pyyaml = ">=6.0.3"
 pyzmq = ">=27.0.1"
 setuptools = ">=80.9.0"
 numpy = ">=2.3.3"
+# Databroker 1.x imports PIMS. PIMS 0.6.1 imports removed NumPy internals;
+# 0.7 vendors the needed helper and supports NumPy 2. Published as an sdist.
+pims = ">=0.7"
 
 # == Optional dependencies (mark with `optional = true`) ==
 fastapi = { version = ">=0.110.1", optional = true }
