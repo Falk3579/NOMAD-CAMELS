@@ -19,16 +19,12 @@ Attributes
         the vertical distance between the plot windows
 """
 
-import sys
-
-from PySide6.QtWidgets import QWidget, QApplication
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication, QWidget
 
 
-app = QCoreApplication.instance()
-if app is None:
-    app = QApplication(sys.argv)
-screens = app.screens()
+# Screen discovery is deferred until a GUI operation. Importing this module
+# must not create a QApplication (or own the application's lifetime).
+screens = []
 
 
 current_screen = 0
@@ -40,14 +36,21 @@ horizontal_margin = 5
 vertical_margin = 5
 
 
-def reset_variables():
-    global current_screen, current_pos, max_height_in_row, iteration, screens, app
+def reset_variables() -> None:
+    """Reset plot placement using the already-running GUI application."""
+    global current_screen, current_pos, max_height_in_row, iteration, screens
+
+    app = QApplication.instance()
+    if app is None:
+        raise RuntimeError("Plot placement requires an existing QApplication.")
     screens = app.screens()
+    if not screens:
+        raise RuntimeError("Plot placement requires at least one screen.")
+
     current_screen = 0
     current_pos = [0, 0]
     max_height_in_row = 0
     iteration = 0
-    screen_geometry = screens[current_screen].availableGeometry()
 
 
 def place_widget(
@@ -70,7 +73,9 @@ def place_widget(
     widget : QWidget
         the widget that should be placed
     """
-    global max_height_in_row, current_screen, current_pos, iteration, screens, app
+    global max_height_in_row, current_screen, current_pos, iteration, screens
+    if not screens:
+        reset_variables()
     widget.show()
 
     # If specific coordinates and dimensions are provided, use them
@@ -95,7 +100,8 @@ def place_widget(
     s = widget.size()
     try:
         screen_geometry = screens[current_screen].availableGeometry()
-    except:
+    except (IndexError, RuntimeError):
+        # A monitor may have been disconnected since the last placement.
         reset_variables()
         screen_geometry = screens[current_screen].availableGeometry()
     if current_pos[0] + s.width() > screen_geometry.width():

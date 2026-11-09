@@ -145,6 +145,10 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     """
     import os
 
+    from nomad_camels.utility.crash_handling import configure_fault_handler
+
+    configure_fault_handler()
+
     # Ensure there is an active QApplication or QCoreApplication instance
     app = QCoreApplication.instance()
     if app is None:

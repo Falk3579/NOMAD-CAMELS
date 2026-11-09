@@ -11,20 +11,11 @@ import re
 import logging
 import requests
 
-import faulthandler
-import sys
+from nomad_camels.utility.crash_handling import configure_fault_handler
 
-try:
-    # Attempt to check sys.__stdout__
-    if sys.__stdout__ is None:
-        with open("faulthandler.log", "w") as fh:
-            faulthandler.enable(file=fh)
-    else:
-        faulthandler.enable()
-except Exception:
-    # Fallback if the check fails
-    with open("faulthandler.log", "w") as fh:
-        faulthandler.enable(file=fh)
+# Preserve crash reporting for callers importing the NOMAD integration directly.
+# Startup also installs it before constructing the main application window.
+configure_fault_handler()
 
 
 def correct_timestamp(file_path):
