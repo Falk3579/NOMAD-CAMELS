@@ -212,6 +212,13 @@ def main() -> None:
         if os.name == "nt":
             config_root = outside / "LocalAppData" / "nomad_camels"
             environment["LOCALAPPDATA"] = str(config_root.parent)
+        elif sys.platform == "darwin":
+            # macOS intentionally uses ~/Library/Application Support, not XDG.
+            # Isolate HOME so the probe never changes the runner's settings.
+            isolated_home = outside / "home"
+            isolated_home.mkdir()
+            environment["HOME"] = str(isolated_home)
+            config_root = isolated_home / "Library" / "Application Support" / "nomad_camels"
         else:
             config_root = outside / "xdg-config" / "nomad_camels"
             environment["XDG_CONFIG_HOME"] = str(config_root.parent)
