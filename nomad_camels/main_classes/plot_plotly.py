@@ -4,7 +4,6 @@ import threading
 import json
 import requests
 import numpy as np
-import lmfit
 
 # For running the Dash app in a separate process.
 from multiprocessing import Process, Event
@@ -210,8 +209,14 @@ def run_dash_app(
         """
         nonlocal data, title, xlabel, ylabel, ylabel2, logX, logY, logY2, maxlen, y_axes, fits, fit_model_dict
 
+        # Loading lmfit also imports substantial parts of SciPy. Import it
+        # only when browser fits are actually requested, rather than when a
+        # 2D Dash plotting subprocess imports this module on Windows.
+        if fits:
+            import lmfit
+
         # Build an lmfit model dictionary for each fit definition found in fits.
-        for fit in fits:
+        for fit in fits or []:
             if fit["use_custom_func"]:
                 model = lmfit.models.ExpressionModel(fit["custom_func"])
                 label = "custom"
