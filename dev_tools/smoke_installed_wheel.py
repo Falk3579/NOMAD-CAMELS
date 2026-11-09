@@ -29,7 +29,7 @@ import sys
 
 import nomad_camels
 from PySide6.QtCore import QFile
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QFontDatabase, QPixmap
 from PySide6.QtWidgets import QApplication, QDialog, QMainWindow
 
 # Some imported GUI modules initialize Qt themselves. Create the application
@@ -67,6 +67,7 @@ from nomad_camels.gui.settings_window import Ui_settings_window
 
 assert callable(start_camels) and issubclass(MainWindow, QMainWindow)
 
+assert QFontDatabase.families(), 'Qt could not find any system fonts'
 assert not QPixmap(str(graphics / 'CAMELS_Icon.png')).isNull(), (
     'Qt could not load the packaged application icon'
 )
@@ -126,7 +127,11 @@ def main() -> None:
 
         environment = os.environ.copy()
         environment.pop("PYTHONPATH", None)
-        environment["QT_QPA_PLATFORM"] = "offscreen"
+        # Windows' native Qt platform plugin uses the Windows font system.
+        # Forcing the offscreen plugin on Windows makes Qt search for
+        # PySide6/lib/fonts (a directory no longer shipped by Qt).
+        # Linux CI uses the offscreen plugin with system fontconfig.
+        environment["QT_QPA_PLATFORM"] = "windows" if os.name == "nt" else "offscreen"
         environment["PYTHONNOUSERSITE"] = "1"
         run([str(interpreter), "-I", "-c", INSTALLED_PROBE], outside, environment=environment)
 
