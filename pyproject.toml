@@ -26,6 +26,9 @@ dependencies = [
     "pyyaml>=6.0.1",
     "pyzmq>=26.2.0",
     "setuptools>=66.1.0",
+    # Instrument_Installer invokes sys.executable -m pip at runtime.
+    # uv does not seed pip automatically in newly created environments.
+    "pip>=25.2",
     "numpy>=2.4.0",
     "tqdm>=4.64.0",
 ]
