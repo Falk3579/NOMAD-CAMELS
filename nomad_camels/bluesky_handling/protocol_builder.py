@@ -194,6 +194,7 @@ standard_start_string3 += "\t\tsys.exit(app.exec())\n"
 standard_final_string = "\tfinally:\n"
 standard_final_string += '\t\twhile RE.state not in ["idle", "panicked"]:\n'
 standard_final_string += "\t\t\ttime.sleep(0.5)\n"
+standard_final_string += "\t\ttqdm_bar.close()\n"
 
 
 def build_from_path(
