@@ -142,6 +142,12 @@ try:
         assert not (package / 'startup_packages.txt').exists(), 'Startup cache written inside package'
         print('Read-only installed-wheel first-launch smoke test passed')
     finally:
+        # MainWindow also launches an additional-import QThread in the
+        # background. This short-lived probe must not destroy its QApplication
+        # while that worker is still running (Qt will abort the process).
+        assert window.importer_thread.wait(60_000), (
+            'Additional-import thread failed to finish before smoke-test teardown'
+        )
         window.close()
 finally:
     # Restore parent directories before their children, including on Windows.
