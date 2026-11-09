@@ -1,12 +1,17 @@
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox, QWidget
 
 
 class WarnPopup(QMessageBox):
     """ """
 
     def __init__(
-        self, parent=None, text="", title="", info_icon=False, do_not_pause=False
-    ):
+        self,
+        parent: QWidget | None = None,
+        text: str = "",
+        title: str = "",
+        info_icon: bool = False,
+        do_not_pause: bool = False,
+    ) -> None:
         super().__init__(parent=parent)
         self.setText(text)
         self.setWindowTitle(f"{title} - NOMAD CAMELS")
@@ -22,5 +27,5 @@ class WarnPopup(QMessageBox):
         else:
             self.exec()
 
-    def ok_clicked(self):
+    def ok_clicked(self) -> None:
         self.clicked_by_user = True

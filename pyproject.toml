@@ -100,6 +100,11 @@ project-includes = [
     "nomad_camels/main_classes/measurement_channel.py",
     "nomad_camels/extensions/extension_interface.py",
     "nomad_camels/extensions/extension_contexts.py",
+    # Batch 3: tree view helpers and focused Qt dialog widgets.
+    "nomad_camels/utility/treeView_functions.py",
+    "nomad_camels/ui_widgets/warn_popup.py",
+    "nomad_camels/frontpanels/helper_panels/enterTextDialog.py",
+    "nomad_camels/frontpanels/helper_panels/pass_ask.py",
 ]
 
 [project.urls]

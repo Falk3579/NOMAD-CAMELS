@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog
+from PySide6.QtWidgets import QDialog, QWidget
 
 from nomad_camels.gui.pass_ask import Ui_Pass_Ask
 
@@ -6,6 +6,6 @@ from nomad_camels.gui.pass_ask import Ui_Pass_Ask
 class Pass_Ask(Ui_Pass_Ask, QDialog):
     """ """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setupUi(self)

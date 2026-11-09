@@ -1,5 +1,5 @@
 from nomad_camels.gui.enterTextDialog import Ui_EnterTextDialog
-from PySide6.QtWidgets import QDialog
+from PySide6.QtWidgets import QDialog, QWidget
 
 
 class EnterTextDialog(Ui_EnterTextDialog, QDialog):
@@ -17,12 +17,17 @@ class EnterTextDialog(Ui_EnterTextDialog, QDialog):
 
     """
 
-    def __init__(self, parent=None, window_title="", label=""):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        window_title: str = "",
+        label: str = "",
+    ) -> None:
         super(EnterTextDialog, self).__init__(parent)
         self.setupUi(self)
         self.setWindowTitle(window_title)
         self.label.setText(label)
-        self.value = None
+        self.value: str | None = None
 
     def accept(self) -> None:
         """ """

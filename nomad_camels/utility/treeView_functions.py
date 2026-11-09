@@ -1,4 +1,15 @@
-def getItemIndex(item_model, data: str, starts_with=False):
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from PySide6.QtCore import QModelIndex
+    from PySide6.QtGui import QStandardItem, QStandardItemModel
+
+
+def getItemIndex(
+    item_model: QStandardItemModel, data: str, starts_with: bool = False
+) -> QModelIndex | None:
     """Iteration over the item_model to return the index of an item with
     given data.
 
@@ -37,7 +48,9 @@ def getItemIndex(item_model, data: str, starts_with=False):
     return None
 
 
-def iterItem(item, data, startWith=False):
+def iterItem(
+    item: QStandardItem, data: str, startWith: bool = False
+) -> tuple[bool, QModelIndex | None]:
     """Iteration over the children of the given item to return the index
     of an item with given data. Called by getItemIndex.
     Runs recursively, if the children-items also have children.
