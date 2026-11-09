@@ -1,9 +1,12 @@
+from typing import Any
+
 import numpy as np
 
-preferences = {}
+# Settings originate in a user-editable preferences mapping with mixed values.
+preferences: dict[str, Any] = {}
 
 
-def format_number(value):
+def format_number(value: int | float | str) -> str:
     """Format a number-string the way it is specified in the preferences.
 
     Parameters

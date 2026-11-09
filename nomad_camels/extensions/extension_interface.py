@@ -7,5 +7,5 @@ EXTENSION_CONFIG = {
 
 
 class Extension:
-    def stop_extension(self):
+    def stop_extension(self) -> None:
         pass

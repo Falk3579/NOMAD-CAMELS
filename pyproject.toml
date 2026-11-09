@@ -95,6 +95,11 @@ project-includes = [
     "nomad_camels/utility/dict_recursive_string.py",
     "nomad_camels/utility/fit_variable_renaming.py",
     "nomad_camels/utility/tqdm_progress_bar.py",
+    # Batch 2: isolated utilities and core data/interface modules.
+    "nomad_camels/utility/number_formatting.py",
+    "nomad_camels/main_classes/measurement_channel.py",
+    "nomad_camels/extensions/extension_interface.py",
+    "nomad_camels/extensions/extension_contexts.py",
 ]
 
 [project.urls]

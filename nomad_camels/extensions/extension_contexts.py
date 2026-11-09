@@ -1,8 +1,13 @@
-active_eln_context = None
+from __future__ import annotations
+
+from typing import Any
+
+
+active_eln_context: ELN_Context | None = None
 
 
 class ELN_Context:
-    def __init__(self, ui):
+    def __init__(self, ui: Any) -> None:
         self.comboBox_user_type = ui.comboBox_user_type
         self.user_widget = ui.user_widget
         self.sample_widget = ui.sample_widget
