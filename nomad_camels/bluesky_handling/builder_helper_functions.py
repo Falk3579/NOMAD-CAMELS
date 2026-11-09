@@ -56,7 +56,10 @@ def get_plot_add_string(name, stream, subprotocol=False, n_tabs=1):
     add_main_string += f'{tabs}\treturner["plots"] = []\n'
     add_main_string += f'{tabs}if "plots_plotly" not in returner:\n'
     add_main_string += f'{tabs}\treturner["plots_plotly"] = []\n'
-    if variables_handling.preferences["nested_data"]:
+    # A protocol may be built before user preferences have been loaded (for
+    # example, when an individual protocol test runs in isolation). Use the
+    # application default for an absent setting.
+    if variables_handling.preferences.get("nested_data", True):
         if stream.startswith('"Subprotocol_'):
             stream_str = f'f"{{stream}}||subprotocol_stream||{stream[1:]}'
         else:
