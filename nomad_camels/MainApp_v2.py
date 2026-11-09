@@ -307,27 +307,15 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             self.preferences["last_shown_notes"] = version
             load_save_functions.save_preferences(self.preferences)
         if start_proxy_bool:
-            from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
-            import multiprocessing
+            from nomad_camels.main_classes.plot_proxy import start_zmq_proxy
             import threading
             from bluesky.callbacks.zmq import Publisher
             from nomad_camels.bluesky_handling.zmq_dispatcher import (
                 create_remote_dispatcher,
             )
-            # Setup queue to receive dynamic ports
-            port_queue = multiprocessing.Queue()
-            # Start the Proxy Process
-            # We store it as self.proxy_proc so we can terminate it later
-            self.proxy_proc = multiprocessing.Process(
-                target=run_zmq_proxy,
-                args=(port_queue,),
-                daemon=True,
-            )
-            self.proxy_proc.start()
-            # Give the proxy 200ms to bind to the ports
-            time.sleep(0.2)
-            # Retrieve the dynamically assigned ports
-            in_port, out_port = port_queue.get()
+
+            # Also detect child crashes rather than hanging on an empty queue.
+            self.proxy_proc, in_port, out_port = start_zmq_proxy()
             print(f"Proxy started on ports: Publisher={in_port}, Dispatcher={out_port}")
             # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
             # Measurements only create their own if the Python script is run 'standalone', so without the main app.
@@ -774,8 +762,9 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
         # Terminate the proxy process
         if hasattr(self, "proxy_proc") and self.proxy_proc is not None:
-            self.proxy_proc.terminate()
-            self.proxy_proc.join(timeout=1.0)
+            from nomad_camels.utility.process_handling import terminate_process
+
+            terminate_process(self.proxy_proc)
         for window in list(self.open_windows):
             window.close()
         if self.open_windows:

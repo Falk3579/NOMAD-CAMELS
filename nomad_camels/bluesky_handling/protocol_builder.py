@@ -143,24 +143,12 @@ standard_start_string += "\tbec = BestEffortCallback()\n"
 standard_start_string += "\tRE.subscribe(bec)\n"
 standard_start_string += """
     if not (dispatcher and publisher):
-        from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
-        import multiprocessing
+        from nomad_camels.main_classes.plot_proxy import start_zmq_proxy
         import threading
         from bluesky.callbacks.zmq import Publisher
         from nomad_camels.bluesky_handling.zmq_dispatcher import create_remote_dispatcher
-        # Setup queue to receive dynamic ports
-        port_queue = multiprocessing.Queue()
-        # Start the Proxy Process
-        proxy_proc = multiprocessing.Process(
-            target=run_zmq_proxy,
-            args=(port_queue,),
-            daemon=True,
-        )
-        proxy_proc.start()
-        # Give the proxy 200ms to bind to the ports
-        time.sleep(0.2)
-        # Retrieve the dynamically assigned ports
-        in_port, out_port = port_queue.get()
+
+        proxy_proc, in_port, out_port = start_zmq_proxy()
         print(f"Proxy started on ports: Publisher={in_port}, Dispatcher={out_port}")
         # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
         # Measurements only create their own if the Python script is run 'standalone', so without the main app.

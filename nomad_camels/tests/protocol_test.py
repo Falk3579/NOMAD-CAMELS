@@ -16,9 +16,9 @@ import asyncio
 from zmq.error import ZMQError
 from bluesky.callbacks.zmq import Publisher
 from nomad_camels.bluesky_handling.zmq_dispatcher import create_remote_dispatcher
-from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
+from nomad_camels.main_classes.plot_proxy import start_zmq_proxy
+from nomad_camels.utility.process_handling import terminate_process
 from nomad_camels.tests.test_helper_functions import ensure_demo_in_devices
-import multiprocessing
 import threading
 import socket
 import time
@@ -39,19 +39,7 @@ def zmq_setup():
     Yields a tuple (publisher, dispatcher) for use in tests.
     Stops the proxy at the end of the session.
     """
-    port_queue = multiprocessing.Queue()
-    # Start the Proxy Process
-    # We store it as proxy_proc so we can terminate it later
-    proxy_proc = multiprocessing.Process(
-        target=run_zmq_proxy,
-        args=(port_queue,),
-        daemon=True,
-    )
-    proxy_proc.start()
-    # Give the proxy 200ms to bind to the ports
-    time.sleep(0.2)
-    # Retrieve the dynamically assigned ports
-    in_port, out_port = port_queue.get()
+    proxy_proc, in_port, out_port = start_zmq_proxy()
     print(f"Proxy started on ports: Publisher={in_port}, Dispatcher={out_port}")
     # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
     # Measurements only create their own if the Python script is run 'standalone', so without the main app.
@@ -83,8 +71,7 @@ def zmq_setup():
     if poll_task is not None and dispatcher.loop.is_running():
         dispatcher.loop.call_soon_threadsafe(poll_task.cancel)
     dispatcher_thread.join(timeout=2.0)
-    proxy_proc.terminate()
-    proxy_proc.join(timeout=1.0)
+    terminate_process(proxy_proc)
 
 
 @pytest.fixture(autouse=True)
