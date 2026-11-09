@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (QAbstractButton, QAbstractSpinBox, QApplication, 
     QWidget)
 
 from nomad_camels.ui_widgets.path_button_edit import Path_Button_Edit
-import settings_window_resource_rc
+from . import settings_window_resource_rc
 
 class Ui_settings_window(object):
     def setupUi(self, settings_window):
