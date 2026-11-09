@@ -80,3 +80,49 @@ def test_crash_handler_does_not_override_existing_handler(monkeypatch) -> None:
 
     monkeypatch.setattr(crash_handling.faulthandler, "enable", should_not_be_called)
     crash_handling.configure_fault_handler()
+
+
+
+def test_windows_zmq_dispatcher_uses_selector_loop(monkeypatch) -> None:
+    """Windows requires a selector event loop, without a global policy change."""
+    import asyncio
+
+    from nomad_camels.bluesky_handling import zmq_dispatcher
+
+    class DispatcherStub:
+        def __init__(self, address, *, loop=None):
+            self.address = address
+            self.loop = loop
+
+    monkeypatch.setattr(zmq_dispatcher, "RemoteDispatcher", DispatcherStub)
+    monkeypatch.setattr(zmq_dispatcher.sys, "platform", "win32")
+
+    dispatcher = zmq_dispatcher.create_remote_dispatcher("localhost:12345")
+    try:
+        assert dispatcher.address == "localhost:12345"
+        assert isinstance(dispatcher.loop, asyncio.SelectorEventLoop)
+    finally:
+        dispatcher.loop.close()
+
+
+def test_non_windows_zmq_dispatcher_keeps_default_loop(monkeypatch) -> None:
+    """Other platforms leave loop selection to Bluesky as before."""
+    from nomad_camels.bluesky_handling import zmq_dispatcher
+
+    kwargs_received = []
+
+    def fake_remote_dispatcher(address, **kwargs):
+        kwargs_received.append(kwargs)
+        return address
+
+    monkeypatch.setattr(zmq_dispatcher, "RemoteDispatcher", fake_remote_dispatcher)
+    monkeypatch.setattr(zmq_dispatcher.sys, "platform", "linux")
+    assert zmq_dispatcher.create_remote_dispatcher("localhost:12345") == "localhost:12345"
+    assert kwargs_received == [{}]
+
+
+def test_generated_protocol_does_not_set_global_asyncio_policy() -> None:
+    from nomad_camels.bluesky_handling.protocol_builder import standard_start_string
+
+    assert "create_remote_dispatcher" in standard_start_string
+    assert "set_event_loop_policy" not in standard_start_string

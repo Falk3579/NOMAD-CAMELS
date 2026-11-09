@@ -14,17 +14,14 @@ from nomad_camels.utility.treeView_functions import getItemIndex
 from threading import Thread
 import asyncio
 from zmq.error import ZMQError
-from bluesky.callbacks.zmq import RemoteDispatcher, Publisher
+from bluesky.callbacks.zmq import Publisher
+from nomad_camels.bluesky_handling.zmq_dispatcher import create_remote_dispatcher
 from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
 from nomad_camels.tests.test_helper_functions import ensure_demo_in_devices
 import multiprocessing
 import threading
 import socket
 import time
-
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
 
 def get_available_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -59,7 +56,7 @@ def zmq_setup():
     # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
     # Measurements only create their own if the Python script is run 'standalone', so without the main app.
     publisher = Publisher(f"localhost:{in_port}")
-    dispatcher = RemoteDispatcher(f"localhost:{out_port}")
+    dispatcher = create_remote_dispatcher(f"localhost:{out_port}")
 
     # 4. Start Dispatcher in a Thread
     # We store the thread as dispatcher_thread to join it later

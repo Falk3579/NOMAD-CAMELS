@@ -310,12 +310,10 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             from nomad_camels.main_classes.plot_proxy import run_zmq_proxy
             import multiprocessing
             import threading
-            import asyncio
-            from bluesky.callbacks.zmq import RemoteDispatcher, Publisher
-
-            # Apply Windows asyncio fix (prevents the ProactorEventLoop warning)
-            if sys.platform == "win32":
-                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            from bluesky.callbacks.zmq import Publisher
+            from nomad_camels.bluesky_handling.zmq_dispatcher import (
+                create_remote_dispatcher,
+            )
             # Setup queue to receive dynamic ports
             port_queue = multiprocessing.Queue()
             # Start the Proxy Process
@@ -334,7 +332,7 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
             # Measurements only create their own if the Python script is run 'standalone', so without the main app.
             self.publisher = Publisher(f"localhost:{in_port}")
-            self.dispatcher = RemoteDispatcher(f"localhost:{out_port}")
+            self.dispatcher = create_remote_dispatcher(f"localhost:{out_port}")
 
             # 4. Start Dispatcher in a Thread
             # We store the thread as self.dispatcher_thread to join it later
