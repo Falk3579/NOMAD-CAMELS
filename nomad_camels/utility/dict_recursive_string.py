@@ -1,4 +1,4 @@
-def dict_recursive_string(data, indent=0):
+def dict_recursive_string(data: dict[str, object], indent: int = 0) -> str:
     """Recursively adds the given dictionary `data` to a string in the format
     "key: value" where each key-value pair has its own line and nested
     dictionaries are indented. Returns the resulting string."""

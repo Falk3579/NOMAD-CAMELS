@@ -5,6 +5,33 @@
 NOMAD CAMELS is a configurable measurement software, targeted towards the requirements of experimental solid-state physics. Here many experiments utilize a multitude of measurement devices used in dynamically changing setups. CAMELS allows to define instrument control and measurement protocols using a graphical user interface (GUI). This provides a low entry threshold enabling the creation of new measurement protocols without programming knowledge or a deeper understanding of device communication. The GUI generates python code that interfaces with instruments and allows users to modify the code for specific applications and implementations of arbitrary instruments if necessary. Even large-scale distributed systems can be implemented. CAMELS generates FAIR-compliant data including rich metadata. NeXus standards, immediate NOMAD integration and hence a FAIRmat-compliant data pipeline can be readily implemented.
 
 
+## Development (Python 3.14+)
+
+NOMAD CAMELS requires **Python 3.14 or newer**. Its PEP 517 build backend is
+**Hatchling**, and runtime dependencies live in `pyproject.toml`.
+The built wheel includes the Qt Designer UI files, resource modules, and graphics.
+
+In a new environment, use [uv](https://docs.astral.sh/uv/):
+
+```sh
+uv sync --python 3.14 --all-extras --group dev
+```
+
+Run the checks with:
+
+```sh
+uv run --no-sync ruff check .
+uv run --no-sync pyrefly check
+uv run --no-sync python -m pytest -p no:dash -p no:zarr -v --timeout=100 nomad_camels/tests
+uv build
+```
+
+Ruff enforces the existing CI error-rule baseline. Pyrefly initially type-checks
+a small set of typed utility modules; the rest of the application is not yet fully
+type-checked. Both tools run as enforced checks in CI, and their scope can be expanded.
+If your source checkout is on a network drive, keeping the Python virtual environment
+on a local drive can significantly improve startup time.
+
 ## Documentation
 
 For more information and documentation visit [the documentation](https://fau-lap.github.io/NOMAD-CAMELS/).

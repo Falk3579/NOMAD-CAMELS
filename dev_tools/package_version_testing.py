@@ -11,7 +11,8 @@ from packaging.specifiers import SpecifierSet
 from packaging.markers import Marker
 import logging
 import time
-import toml
+import tomllib
+from packaging.requirements import Requirement
 
 # set log file
 logging.basicConfig(filename="test_log.txt", level=logging.INFO)
@@ -632,7 +633,7 @@ def main():
        --mode=min   (default) test for the lowest possible passing version.
        --mode=max   test for the highest possible passing version.
 
-    The constraints are read from the [tool.poetry.dependencies] section of pyproject.toml.
+    The constraints are read from PEP 621 [project] metadata in pyproject.toml.
     """
     # Use the python that is running this script
     python_executable = sys.executable
@@ -645,51 +646,41 @@ def main():
         if arg in ("--mode=max", "--mode=maximal", "--max"):
             mode = "max"
 
-    # Read pyproject.toml for dependencies
-    pyproj = toml.load("pyproject.toml")
-    # Access dependencies under tool.poetry.dependencies
-    poetry_deps = pyproj.get("tool", {}).get("poetry", {}).get("dependencies", {})
-    # Remove "python" dependency – we use the current interpreter.
-    poetry_deps.pop("python", None)
+    # Read PEP 621 dependencies and extras for Python 3.14+.
+    if sys.version_info < (3, 14):
+        raise RuntimeError("NOMAD CAMELS requires Python 3.14 or newer")
+    with open("pyproject.toml", "rb") as handle:
+        pyproj = tomllib.load(handle)
 
-    # For clarity, we also extract other constraints from the extras or elsewhere as needed
-    # (Here we simply use all dependencies as constraints for demonstration)
-    other_constraints = []  # You can modify this list if you need extra constraints
+    requirements = list(pyproj["project"]["dependencies"])
+    for extra in pyproj["project"].get("optional-dependencies", {}).values():
+        requirements.extend(extra)
 
-    # add optional dependencies to poetry_deps
-    optional_deps = (
-        pyproj.get("tool", {}).get("poetry", {}).get("optional-dependencies", {})
-    )
-    for opt_name, opt_deps in optional_deps.items():
-        for dep, constraint in opt_deps.items():
-            if dep not in poetry_deps:
-                poetry_deps[dep] = constraint
+    project_deps = {}
+    for text in requirements:
+        parsed = Requirement(text)
+        if parsed.marker and not parsed.marker.evaluate(
+            {"python_version": current_python_version}
+        ):
+            continue
+        project_deps[parsed.name] = str(parsed.specifier)
 
-    # add all packages without constraints to other_constraints
-    for dep, constraint in poetry_deps.items():
-        if isinstance(constraint, str) and constraint.startswith("=="):
-            # If the constraint is a specific version, we can add it to other_constraints
-            other_constraints.append(f"{dep}{constraint}")
-        elif isinstance(constraint, dict):
-            # If it's a dict (e.g., with extras), we can add the version if available
-            version = constraint.get("version", "")
-            if version:
-                other_constraints.append(f"{dep}{version}")
-        else:
-            # Otherwise, just add the package name
-            other_constraints.append(dep)
+    other_constraints = [
+        f"{dependency}{specifier}" if specifier else dependency
+        for dependency, specifier in project_deps.items()
+    ]
 
     # Print out resolved dependencies based on the current Python version:
     print(f"Current Python version: {current_python_version}")
     print("Resolved dependency constraints from pyproject.toml:")
-    for dep, constraint in poetry_deps.items():
+    for dep, constraint in project_deps.items():
         resolved = resolve_constraint(constraint, current_python_version)
         print(f"  {dep}: {resolved}")
 
     # A test command – adjust if needed.
     test_command = ["pytest", "--timeout=60"]
 
-    print(f"found the following dependencies in pyproject.toml:\n{poetry_deps}")
+    print(f"found the following dependencies in pyproject.toml:\n{project_deps}")
 
     results = {}
 
@@ -699,7 +690,7 @@ def main():
     print(
         f"\n===== Testing dependencies with mode '{mode}' using {python_executable} =====\n"
     )
-    for dep, constraint in poetry_deps.items():
+    for dep, constraint in project_deps.items():
         # 'constraint' may be a simple version string or a dict with markers – we assume simple version strings.
         # If it is a dict, pick the constraint that applies (this example is simplistic).
         broad_spec = resolve_constraint(constraint, current_python_version)

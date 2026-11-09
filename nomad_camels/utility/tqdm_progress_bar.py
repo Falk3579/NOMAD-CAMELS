@@ -14,11 +14,11 @@ class ProgressBar:
         the actual progress bar
     """
 
-    def __init__(self, n_steps):
+    def __init__(self, n_steps: int) -> None:
         self.n_steps = n_steps
         self.bar = tqdm(total=n_steps)
 
-    def emit(self, n):
+    def emit(self, n: int) -> None:
         """
         Updates the progress bar to the next step. The parameter `n` is only so
         the function has the same shape as the `emit` function for the signal
@@ -31,6 +31,6 @@ class ProgressBar:
         """
         self.bar.update()
 
-    def close(self):
+    def close(self) -> None:
         """Release the underlying tqdm bar before interpreter shutdown."""
         self.bar.close()

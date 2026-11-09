@@ -19,7 +19,7 @@ fit_variable_changer = {
 }
 
 
-def replace_name(var_name):
+def replace_name(var_name: str) -> str:
     """
     Replaces mathematical symbols with text so that the variable name becomes a
     valid name.
