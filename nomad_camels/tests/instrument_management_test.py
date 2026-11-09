@@ -26,7 +26,10 @@ def install_demo(qtbot, installer):
         )
         # the instruments_updated signal is being waited for, after clicking on
         # the install/update button
-    assert "demo_instrument" in installer.installed_devs
+    assert "demo_instrument" in installer.installed_devs, (
+        "Demo driver installation failed. Installer output:\n"
+        + installer.textEdit_device_info.toPlainText()
+    )
 
 
 def test_add_device(qtbot):
