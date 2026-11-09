@@ -45,32 +45,32 @@ dash = ["dash>=2.7.0"]
 
 # Maintain the published dev extra for pip users.
 dev = [
-    "pytest>=9.0.0",
+    "pytest>=9.2.0",
     "pytest-qt>=4.2.0",
     "pytest-order>=0.7.1",
     "pytest-mock>=0.4.0",
     "pytest-timeout>=1.3.1",
     "pytest-cov>=6.0.0",
     "pytest-xvfb>=3.0.0; sys_platform == 'linux'",
-    "ruff>=0.14.0,<1.0.0",
-    "pyrefly>=1.4.1,<2.0.0",
+    "ruff==0.17.4",
+    "pyrefly==1.4.1",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.0",
+    "pytest>=9.2.0",
     "pytest-qt>=4.2.0",
     "pytest-order>=0.7.1",
     "pytest-mock>=0.4.0",
     "pytest-timeout>=1.3.1",
     "pytest-cov>=6.0.0",
     "pytest-xvfb>=3.0.0; sys_platform == 'linux'",
-    "ruff>=0.14.0,<1.0.0",
-    "pyrefly>=1.4.1,<2.0.0",
+    "ruff==0.17.4",
+    "pyrefly==1.4.1",
 ]
 
 [build-system]
-requires = ["hatchling>=1.27.0,<2.0.0"]
+requires = ["hatchling>=1.32.3,<2.0.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
