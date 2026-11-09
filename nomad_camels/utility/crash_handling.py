@@ -9,11 +9,21 @@ from __future__ import annotations
 
 import faulthandler
 import logging
+import os
 from pathlib import Path
 import sys
 from typing import TextIO
 
 _crash_log_handle: TextIO | None = None
+
+
+def _crash_log_directory() -> Path:
+    """Find the user configuration directory without importing GUI modules."""
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "nomad_camels"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "nomad_camels"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "nomad_camels"
 
 
 def configure_fault_handler() -> None:
@@ -32,12 +42,10 @@ def configure_fault_handler() -> None:
             # The original stderr can be unavailable/closed for GUI apps.
             pass
 
-    # Load the path only when the fallback is needed. This avoids importing
-    # GUI and configuration modules merely to set up crash diagnostics.
-    from nomad_camels.utility import load_save_functions
-
+    # pythonw.exe has no original stderr. Avoid importing load_save_functions
+    # here: it pulls in Qt/configuration modules before QApplication exists.
     try:
-        folder = Path(load_save_functions.appdata_path)
+        folder = _crash_log_directory()
         folder.mkdir(parents=True, exist_ok=True)
         if _crash_log_handle is None or _crash_log_handle.closed:
             _crash_log_handle = (folder / "faulthandler.log").open("a", encoding="utf-8")

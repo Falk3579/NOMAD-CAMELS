@@ -45,7 +45,7 @@ def test_plot_placement_discovers_screens_lazily(qtbot) -> None:
 
 def test_crash_log_file_stays_open(monkeypatch, tmp_path: Path) -> None:
     """faulthandler must hold a live descriptor when console stderr is absent."""
-    from nomad_camels.utility import crash_handling, load_save_functions
+    from nomad_camels.utility import crash_handling
 
     seen_files = []
     monkeypatch.setattr(crash_handling.sys, "__stderr__", None)
@@ -55,7 +55,7 @@ def test_crash_log_file_stays_open(monkeypatch, tmp_path: Path) -> None:
         "enable",
         lambda *, file: seen_files.append(file),
     )
-    monkeypatch.setattr(load_save_functions, "appdata_path", str(tmp_path))
+    monkeypatch.setattr(crash_handling, "_crash_log_directory", lambda: tmp_path)
 
     try:
         crash_handling.configure_fault_handler()

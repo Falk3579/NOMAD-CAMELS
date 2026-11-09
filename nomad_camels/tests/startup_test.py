@@ -29,19 +29,28 @@ def test_start_camels_with_pythonw():
     pythonw = shutil.which("pythonw")
     assert pythonw, "pythonw not found in PATH on Windows"
 
-    # Command code:
-    #   - Sets a QTimer to exit after 2000ms so the window auto-closes
-    #   - Imports and starts the main app via start_camels
-    # The QTimer schedules sys.exit(0) after 2 seconds.
-    cmd = (
-        "from nomad_camels.CAMELS_start import start_camels; "
-        "start_camels(start_proxy_bool=False, actually_exec=False); "
-    )
-
-    command = [pythonw, "-c", cmd]
-    proc = subprocess.run(command, capture_output=False, text=False, timeout=50)
-    # test may fail if instruments are installed, i.e. if there are errors that they cannot be imported
-    assert proc.returncode in [0, 3221226505]
+    # pythonw has no visible stderr. Record a traceback for failed startup
+    # so CI can diagnose Python GUI-launcher failures rather than an exit code.
+    with tempfile.TemporaryDirectory(prefix="nomad-camels-pythonw-") as directory:
+        error_path = os.path.join(directory, "startup-error.txt")
+        cmd = (
+            "import traceback\n"
+            "try:\n"
+            "    from nomad_camels.CAMELS_start import start_camels\n"
+            "    start_camels(start_proxy_bool=False, actually_exec=False)\n"
+            "except BaseException:\n"
+            f"    with open({error_path!r}, 'w', encoding='utf-8') as log:\n"
+            "        log.write(traceback.format_exc())\n"
+            "    raise\n"
+        )
+        proc = subprocess.run([pythonw, "-c", cmd], timeout=50, check=False)
+        error_message = ""
+        if os.path.isfile(error_path):
+            with open(error_path, encoding="utf-8") as log:
+                error_message = log.read()
+        assert proc.returncode in [0, 3221226505], (
+            f"pythonw startup exited with {proc.returncode}:\n{error_message}"
+        )
     # if proc.returncode != 0:
     #     # assert proc.returncode == 0
 
