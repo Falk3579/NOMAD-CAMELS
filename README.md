@@ -24,7 +24,13 @@ uv run --no-sync ruff check .
 uv run --no-sync pyrefly check
 uv run --no-sync python -m pytest -p no:dash -p no:zarr -v --timeout=100 nomad_camels/tests
 uv build
+python dev_tools/smoke_installed_wheel.py
 ```
+
+The wheel smoke test creates a temporary Python 3.14 environment outside the
+repository, installs the wheel and its dependencies without an editable install,
+then checks the installed GUI entry point, Qt forms, icons and compiled resources.
+It runs in CI on Windows and Ubuntu.
 
 Ruff enforces the existing CI error-rule baseline. Pyrefly initially type-checks
 a small set of typed utility modules; the rest of the application is not yet fully

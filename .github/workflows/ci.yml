@@ -144,6 +144,34 @@ jobs:
           include-hidden-files: true
 
 
+  # Verify distribution artifacts independently of the editable/source environment.
+  # Python 3.14 must install the wheel and initialize its Qt GUI on both systems.
+  wheel_smoke_test:
+    name: Installed wheel smoke test (Python 3.14, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install Python 3.14
+        uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.14'
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: '0.13.7'
+      - name: Install Qt libraries on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 libglx-mesa0 libegl1 libopengl0 libpulse0
+      - name: Build wheel with Hatchling
+        run: uv build --wheel
+      - name: Install wheel in a clean environment and smoke-test GUI
+        run: python dev_tools/smoke_installed_wheel.py
+
   # Experimental Python 3.15 across all platforms. Failures must never block
   # Python 3.14 CI or the aggregate coverage report.
   python315_experimental:
