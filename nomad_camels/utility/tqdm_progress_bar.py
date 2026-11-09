@@ -30,3 +30,7 @@ class ProgressBar:
             has no function, only there to be able to give this method a value
         """
         self.bar.update()
+
+    def close(self):
+        """Release the underlying tqdm bar before interpreter shutdown."""
+        self.bar.close()
