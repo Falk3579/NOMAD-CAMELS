@@ -42,3 +42,43 @@ def wait_for_process_event(
             raise RuntimeError(
                 f"{name} exited before signaling startup (exit code {process.exitcode})"
             )
+
+
+
+def wait_for_http_service(
+    process: BaseProcess,
+    url: str,
+    *,
+    timeout: float = 30.0,
+    name: str = "HTTP service",
+) -> None:
+    """Check actual HTTP readiness, not just an event set before bind()."""
+    import requests
+
+    if timeout <= 0:
+        raise ValueError("HTTP startup timeout must be positive")
+
+    deadline = time.monotonic() + timeout
+    while True:
+        if not process.is_alive():
+            raise RuntimeError(
+                f"{name} exited before serving HTTP (exit code {process.exitcode})"
+            )
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(f"{name} did not respond at {url} within {timeout:g}s")
+
+        try:
+            response = requests.get(url, timeout=min(0.5, remaining))
+            if response.status_code == 200:
+                if not process.is_alive():
+                    raise RuntimeError(
+                        f"{name} exited during HTTP startup (exit code {process.exitcode})"
+                    )
+                return
+        except requests.RequestException:
+            # Connection refused while the child binds the port is expected.
+            pass
+
+        time.sleep(min(0.1, max(0, deadline - time.monotonic())))

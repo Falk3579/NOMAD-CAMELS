@@ -1,12 +1,19 @@
 import sys
 import os
 import threading
+import time
 import json
 import requests
 import numpy as np
 
 # For running the Dash app in a separate process.
 from multiprocessing import Process, Event
+
+from nomad_camels.utility.process_handling import (
+    terminate_process,
+    wait_for_process_event,
+    wait_for_http_service,
+)
 
 # Flask request is used to receive query parameters or JSON from POST/GET in the Dash server.
 from flask import request as flask_request
@@ -44,6 +51,22 @@ default_colors = [
     "#bcbd22",
     "#17becf",
 ]
+
+
+def _wait_for_dash_startup(process, ready_event, port: int, *, timeout: float = 45.0):
+    """Wait for setup and an actual HTTP /status response within one deadline."""
+    deadline = time.monotonic() + timeout
+    name = f"Dash plot server on port {port}"
+    wait_for_process_event(process, ready_event, timeout=timeout, name=name)
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError(f"{name} did not respond within {timeout:g}s")
+    wait_for_http_service(
+        process,
+        f"http://127.0.0.1:{port}/status",
+        timeout=remaining,
+        name=name,
+    )
 
 
 def run_dash_app(
@@ -411,9 +434,15 @@ class PlotlyLiveCallback(CallbackBase):
                 "fits": self.fits,
             },
         )
-        self.dash_process.start()
-        # Wait until the Dash server signals that it is ready.
-        wait_for_dash_app_event.wait()
+        try:
+            self.dash_process.start()
+            _wait_for_dash_startup(
+                self.dash_process, wait_for_dash_app_event, self.web_port
+            )
+        except BaseException:
+            terminate_process(self.dash_process)
+            self.dash_process = None
+            raise
 
     def event(self, doc):
         """
@@ -472,15 +501,13 @@ class PlotlyLiveCallback(CallbackBase):
         Called when the Bluesky run ends (at 'stop' document).
         Terminates the Dash process if it is still alive.
         """
-        import time
-
-        if hasattr(self, "dash_process") and self.dash_process.is_alive():
-            # Give a short pause before terminating.
-            time.sleep(1)
-            self.dash_process.terminate()
-            self.dash_process.join()
+        if hasattr(self, "dash_process") and self.dash_process is not None:
+            if self.dash_process.is_alive():
+                # Give a short pause before terminating.
+                time.sleep(1)
+                terminate_process(self.dash_process)
+                print("Terminated the web plot app process.")
             self.dash_process = None
-            print("Terminated the web plot app process.")
 
     def clear_data(self):
         """
@@ -777,8 +804,15 @@ class PlotlyLiveCallback_2d(CallbackBase):
                 "wait_for_dash_app_event": wait_for_dash_app_event,
             },
         )
-        self.dash_process.start()
-        wait_for_dash_app_event.wait()
+        try:
+            self.dash_process.start()
+            _wait_for_dash_startup(
+                self.dash_process, wait_for_dash_app_event, self.web_port
+            )
+        except BaseException:
+            terminate_process(self.dash_process)
+            self.dash_process = None
+            raise
 
     def event(self, doc):
         """
@@ -837,11 +871,11 @@ class PlotlyLiveCallback_2d(CallbackBase):
         Called when the Bluesky run ends.
         Terminates the Dash process if it is still alive.
         """
-        if hasattr(self, "dash_process") and self.dash_process.is_alive():
-            self.dash_process.terminate()
-            self.dash_process.join()
+        if hasattr(self, "dash_process") and self.dash_process is not None:
+            if self.dash_process.is_alive():
+                terminate_process(self.dash_process)
+                print("Terminated the web plot app process.")
             self.dash_process = None
-            print("Terminated the web plot app process.")
 
     def clear_data(self):
         """

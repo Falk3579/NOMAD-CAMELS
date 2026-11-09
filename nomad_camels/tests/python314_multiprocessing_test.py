@@ -130,3 +130,70 @@ def test_generated_protocol_waits_for_proxy_ports_safely():
 
     assert "proxy_proc, in_port, out_port = start_zmq_proxy()" in standard_start_string
     assert "port_queue.get()" not in standard_start_string
+
+
+
+def test_http_health_check_waits_for_actual_response(monkeypatch):
+    from nomad_camels.utility.process_handling import wait_for_http_service
+    import requests
+
+    seen_urls = []
+
+    def get(url, **kwargs):
+        seen_urls.append(url)
+        return type("Ok", (), {"status_code": 200})()
+
+    monkeypatch.setattr(requests, "get", get)
+    wait_for_http_service(
+        _FakeProcess(alive=True), "http://127.0.0.1:12345/status", timeout=0.1
+    )
+    assert seen_urls == ["http://127.0.0.1:12345/status"]
+
+
+def test_http_health_check_notices_child_exit():
+    from nomad_camels.utility.process_handling import wait_for_http_service
+
+    with pytest.raises(RuntimeError, match="exit code 7"):
+        wait_for_http_service(
+            _FakeProcess(alive=False, exitcode=7),
+            "http://127.0.0.1:12345/status",
+            timeout=0.1,
+        )
+
+
+def test_http_health_check_times_out(monkeypatch):
+    from nomad_camels.utility.process_handling import wait_for_http_service
+    import requests
+
+    def offline(*args, **kwargs):
+        raise requests.ConnectionError("server not ready")
+
+    monkeypatch.setattr(requests, "get", offline)
+    with pytest.raises(TimeoutError, match="did not respond"):
+        wait_for_http_service(
+            _FakeProcess(alive=True),
+            "http://127.0.0.1:12345/status",
+            timeout=0.03,
+            name="Dash test",
+        )
+
+
+def test_dash_startup_checks_http_after_process_event(monkeypatch):
+    """The child sends its event before Dash binds its HTTP socket."""
+    from nomad_camels.main_classes import plot_plotly
+
+    calls = []
+    monkeypatch.setattr(
+        plot_plotly,
+        "wait_for_process_event",
+        lambda *args, **kwargs: calls.append("event"),
+    )
+    monkeypatch.setattr(
+        plot_plotly,
+        "wait_for_http_service",
+        lambda *args, **kwargs: calls.append(("http", args[1])),
+    )
+    plot_plotly._wait_for_dash_startup(
+        _FakeProcess(alive=True), object(), 45678, timeout=1.0
+    )
+    assert calls == ["event", ("http", "http://127.0.0.1:45678/status")]
