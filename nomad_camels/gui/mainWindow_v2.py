@@ -67,7 +67,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from dynamicuploadcombobox import DynamicUploadComboBox
+from nomad_camels.gui.dynamicuploadcombobox import DynamicUploadComboBox
 from nomad_camels.ui_widgets.console_redirect import Console_TextEdit
 from nomad_camels.ui_widgets.run_queue import RunQueue
 from nomad_camels.ui_widgets.variable_table import VariableTable
