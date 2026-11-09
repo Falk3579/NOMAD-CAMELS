@@ -54,7 +54,7 @@ import ophyd
 from nomad_camels.main_classes import protocol_class, device_class, loop_step
 from nomad_camels.utility.load_save_helper_functions import load_plots
 from nomad_camels.utility.device_handling import load_local_packages
-from nomad_camels.utility import variables_handling
+from nomad_camels.utility import variables_handling, user_paths
 from nomad_camels.ui_widgets.warn_popup import WarnPopup
 from nomad_camels.bluesky_handling.watchdogs import Watchdog
 from nomad_camels.bluesky_handling.evaluation_helper import Evaluator
@@ -63,32 +63,27 @@ from nomad_camels.bluesky_handling.evaluation_helper import Evaluator
 os_name = platform.system()
 
 if os_name == "Windows":
-    # Use the APPDATA environment variable on Windows
-    data_path = os.path.join(getenv("USERPROFILE"), "Documents", "NOMAD_CAMELS_data")
-    appdata_path = os.path.join(getenv("LOCALAPPDATA"), "nomad_camels")
+    data_path = os.path.join(
+        getenv("USERPROFILE") or os.path.expanduser("~"),
+        "Documents",
+        "NOMAD_CAMELS_data",
+    )
 elif os_name == "Linux":
-    # Use the XDG_DATA_HOME environment variable on Linux, defaulting to ~/.local/share
     data_path = os.path.join(
         getenv("XDG_DATA_HOME")
         or os.path.join(os.path.expanduser("~"), ".local", "share"),
         "nomad_camels_data",
     )
-    appdata_path = os.path.join(
-        getenv("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config"),
-        "nomad_camels",
-    )
 elif os_name == "Darwin":
-    # Use ~/Library/Application Support on MacOS
     data_path = os.path.join(
         os.path.expanduser("~"), "Library", "Application Support", "nomad_camels_data"
     )
-    appdata_path = os.path.join(
-        os.path.expanduser("~"), "Library", "Application Support", "nomad_camels"
-    )
 else:
-    # Default to the home directory
-    data_path = os.path.expanduser("~", "nomad_camels_data")
-    appdata_path = os.path.expanduser("~", ".nomad_camels")
+    data_path = os.path.join(os.path.expanduser("~"), "nomad_camels_data")
+
+# This default directory hosts the config_path pointer even when users select
+# an entirely different directory for their preferences/presets.
+appdata_path = str(user_paths.user_config_root())
 
 
 preset_path = os.path.join(appdata_path, "Presets")
@@ -157,28 +152,23 @@ standard_pref = {
 
 def update_config_path(path):
     global appdata_path, preset_path, backup_path
-    appdata_path = path
-    with open(
-        os.path.join(os.path.dirname(os.path.dirname(__file__)), "config_path"), "w"
-    ) as f:
-        f.write(appdata_path)
+    selected = os.fspath(path)
+    # Verify the target is creatable before recording it as the user preference.
+    os.makedirs(selected, exist_ok=True)
+    user_paths.write_config_pointer(selected)
+    appdata_path = selected
     preset_path = os.path.join(appdata_path, "Presets")
     backup_path = os.path.join(preset_path, "Backup")
     standard_pref["py_files_path"] = os.path.join(appdata_path, "python_files").replace(
         "\\", "/"
     )
-    if not os.path.isdir(appdata_path):
-        makedirs(appdata_path)
 
 
 def check_config_path():
     global appdata_path
-    config_path_file = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "config_path"
-    )
-    if os.path.isfile(config_path_file):
-        with open(config_path_file, "r") as f:
-            appdata_path = f.read().strip()
+    selected = user_paths.read_config_pointer()
+    if selected is not None:
+        appdata_path = selected
     else:
         from nomad_camels.ui_widgets.path_button_edit import Path_Button_Dialog
 

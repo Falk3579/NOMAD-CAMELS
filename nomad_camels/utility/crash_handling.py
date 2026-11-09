@@ -9,21 +9,18 @@ from __future__ import annotations
 
 import faulthandler
 import logging
-import os
 from pathlib import Path
 import sys
 from typing import TextIO
+
+from nomad_camels.utility.user_paths import user_config_root
 
 _crash_log_handle: TextIO | None = None
 
 
 def _crash_log_directory() -> Path:
-    """Find the user configuration directory without importing GUI modules."""
-    if sys.platform == "win32":
-        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local") / "nomad_camels"
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "nomad_camels"
-    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "nomad_camels"
+    """Find the user directory without importing GUI/configuration modules."""
+    return user_config_root()
 
 
 def configure_fault_handler() -> None:

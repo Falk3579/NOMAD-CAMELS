@@ -146,6 +146,7 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     import os
 
     from nomad_camels.utility.crash_handling import configure_fault_handler
+    from nomad_camels.utility import user_paths
 
     configure_fault_handler()
 
@@ -160,17 +161,8 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     loading_screen = LoadingScreen()
     loading_screen.show()
 
-    import os.path
-
-    # Determine the path to the startup packages file
-    file_dir = os.path.dirname(__file__)
-    package_file = os.path.join(file_dir, "startup_packages.txt")
-    if os.path.isfile(package_file):
-        # Read package names from the file, stripping newline characters
-        with open(package_file, "r", encoding="utf-8") as f:
-            package_list = [x.rstrip() for x in f.readlines()]
-    else:
-        package_list = []
+    # Read any legacy startup cache, but never write into the installed wheel.
+    package_list = user_paths.read_startup_packages()
 
     # Start the import thread and connect its signals to the loading screen updates
     thread = ImportThread(package_list)
@@ -182,15 +174,10 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     while thread.isRunning():
         app.processEvents()
 
-    # After the thread finishes, write the names of currently loaded modules to the startup packages file
-    if not os.path.isfile(package_file):
-        with open(package_file, "w", encoding="utf-8") as f:
-            packages = {key: val for key, val in sys.modules.items()}
-            for i, (mod_name, mod) in enumerate(packages.items()):
-                # Skip private modules and any modules that are None
-                if mod_name.startswith("_") or mod is None:
-                    continue
-                f.write(f"{mod_name}\n")
+    # Failure to write this optional cache must not block first launch.
+    user_paths.write_startup_packages(
+        name for name, module in tuple(sys.modules.items()) if module is not None
+    )
 
     # Import the main application and utility modules
     from nomad_camels import MainApp_v2
