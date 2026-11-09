@@ -205,7 +205,22 @@ jobs:
           echo "HDF5_DIR=$(brew --prefix hdf5)" >> "$GITHUB_ENV"
       - name: Install dependencies for Python 3.15
         id: dependencies
-        run: uv sync --python 3.15 --all-extras --group dev
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            # Native HDF5 is available above, so the PyPI source build works.
+            uv sync --python 3.15 --all-extras --group dev
+          else
+            # h5py 3.16 has no cp315 wheels on PyPI yet. Keep the normal
+            # dependency resolution but skip its source build, then install
+            # the h5py project's cp315 nightly wheel for experimental CI only.
+            uv sync --python 3.15 --all-extras --group dev --no-install-package h5py
+            uv pip install --no-deps \
+              --index https://pypi.anaconda.org/scientific-python-nightly-wheels/simple \
+              "h5py==3.17.0.dev0"
+          fi
+          # Fail immediately if the installed extension cannot load HDF5.
+          uv run --no-sync python -c "import h5py; print('h5py', h5py.__version__, 'HDF5', h5py.version.hdf5_version)"
       - name: Run Python 3.15 tests
         id: tests
         run: uv run --no-sync python -m pytest -p no:dash -p no:zarr -vv --timeout=100 nomad_camels/tests
