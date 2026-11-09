@@ -84,6 +84,72 @@ window.close()
 print(f'Installed wheel smoke test passed: {distribution.version} ({module_file})')
 """
 
+# A separate subprocess exercises a first GUI launch with the installed
+# nomad_camels directory read-only. The custom configuration directory and
+# startup cache must be created outside site-packages.
+READ_ONLY_CONFIG_PROBE = """
+from pathlib import Path
+import os
+import stat
+
+import nomad_camels
+from nomad_camels.utility import user_paths
+
+package = Path(nomad_camels.__file__).resolve().parent
+expected_root = Path(os.environ['NOMAD_CAMELS_SMOKE_CONFIG_ROOT'])
+selected = Path(os.environ['NOMAD_CAMELS_SMOKE_CUSTOM_CONFIG'])
+assert user_paths.user_config_root() == expected_root
+assert not expected_root.exists()
+assert not selected.exists()
+
+# Preserve the original permissions for temporary-environment cleanup.
+permissions = []
+for target in sorted(package.rglob('*'), key=lambda p: len(p.parts), reverse=True):
+    if not target.is_symlink():
+        mode = stat.S_IMODE(target.stat().st_mode)
+        permissions.append((target, mode))
+        target.chmod(mode & ~0o222)
+mode = stat.S_IMODE(package.stat().st_mode)
+permissions.append((package, mode))
+package.chmod(mode & ~0o222)
+
+try:
+    from nomad_camels.ui_widgets import path_button_edit
+    from nomad_camels.utility import update_camels
+
+    class AutoChoosePath:
+        def __init__(self, *, title='', path='', **kwargs):
+            if title == 'Select path for configuration files':
+                self.path = str(selected)
+            else:
+                self.path = str(expected_root / 'measurements')
+
+        def exec(self):
+            return True
+
+    path_button_edit.Path_Button_Dialog = AutoChoosePath
+    update_camels.show_release_notes = lambda: None
+
+    from nomad_camels.CAMELS_start import start_camels
+
+    window = start_camels(start_proxy_bool=False, actually_exec=False)
+    try:
+        assert window.isVisible(), 'Full first-run GUI did not open'
+        assert (expected_root / 'config_path').read_text(encoding='utf-8') == str(selected)
+        assert (expected_root / 'startup_packages.txt').is_file()
+        assert (selected / 'preferences.json').is_file()
+        assert not (package / 'config_path').exists(), 'Config pointer written inside package'
+        assert not (package / 'startup_packages.txt').exists(), 'Startup cache written inside package'
+        print('Read-only installed-wheel first-launch smoke test passed')
+    finally:
+        window.close()
+finally:
+    # Restore parent directories before their children, including on Windows.
+    for target, mode in reversed(permissions):
+        target.chmod(mode)
+"""
+
+
 
 def run(command: list[str], cwd: Path, *, environment: dict[str, str] | None = None) -> None:
     """Run a checked command outside the repository, with visible output."""
@@ -134,6 +200,23 @@ def main() -> None:
         environment["QT_QPA_PLATFORM"] = "windows" if os.name == "nt" else "offscreen"
         environment["PYTHONNOUSERSITE"] = "1"
         run([str(interpreter), "-I", "-c", INSTALLED_PROBE], outside, environment=environment)
+
+        # Test the actual first GUI launch (including config-path initialization)
+        # from a non-editable wheel without touching the real user's settings.
+        if os.name == "nt":
+            config_root = outside / "LocalAppData" / "nomad_camels"
+            environment["LOCALAPPDATA"] = str(config_root.parent)
+        else:
+            config_root = outside / "xdg-config" / "nomad_camels"
+            environment["XDG_CONFIG_HOME"] = str(config_root.parent)
+        environment["NOMAD_CAMELS_SMOKE_CONFIG_ROOT"] = str(config_root)
+        environment["NOMAD_CAMELS_SMOKE_CUSTOM_CONFIG"] = str(outside / "custom-config")
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        run(
+            [str(interpreter), "-I", "-c", READ_ONLY_CONFIG_PROBE],
+            outside,
+            environment=environment,
+        )
 
 
 if __name__ == "__main__":
