@@ -1436,7 +1436,7 @@ Useful to identify / filter measurements</string>
   <customwidget>
    <class>DynamicUploadComboBox</class>
    <extends>QComboBox</extends>
-   <header>dynamicuploadcombobox</header>
+   <header>nomad_camels.gui.dynamicuploadcombobox</header>
   </customwidget>
   <customwidget>
    <class>Variable_Box</class>
