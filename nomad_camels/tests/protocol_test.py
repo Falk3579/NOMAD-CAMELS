@@ -63,8 +63,15 @@ def zmq_setup():
 
     # 4. Start Dispatcher in a Thread
     # We store the thread as dispatcher_thread to join it later
+    def run_dispatcher():
+        try:
+            dispatcher.start()
+        except asyncio.CancelledError:
+            # Expected when the polling task is cancelled during teardown.
+            pass
+
     dispatcher_thread = threading.Thread(
-        target=dispatcher.start,
+        target=run_dispatcher,
         daemon=True,
     )
     dispatcher_thread.start()
@@ -72,7 +79,12 @@ def zmq_setup():
     yield publisher, dispatcher
 
     # Teardown: stop the proxy once all tests have finished.
-    dispatcher.loop.call_soon_threadsafe(dispatcher.loop.stop)
+    # RemoteDispatcher.start() runs the poll task via run_until_complete().
+    # Stopping the loop directly interrupts it before the task finishes,
+    # producing RuntimeError and a pending-task warning at shutdown.
+    poll_task = getattr(dispatcher, "_task", None)
+    if poll_task is not None and dispatcher.loop.is_running():
+        dispatcher.loop.call_soon_threadsafe(poll_task.cancel)
     dispatcher_thread.join(timeout=2.0)
     proxy_proc.terminate()
     proxy_proc.join(timeout=1.0)
