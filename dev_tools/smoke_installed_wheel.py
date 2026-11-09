@@ -32,6 +32,12 @@ from PySide6.QtCore import QFile
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication, QDialog, QMainWindow
 
+# Some imported GUI modules initialize Qt themselves. Create the application
+# before importing the application's modules, and always reuse any instance.
+app = QApplication.instance()
+if app is None:
+    app = QApplication([])
+
 installed_root = Path(sys.prefix).resolve()
 module_file = Path(nomad_camels.__file__).resolve()
 assert module_file.is_relative_to(installed_root), (
@@ -61,7 +67,6 @@ from nomad_camels.gui.settings_window import Ui_settings_window
 
 assert callable(start_camels) and issubclass(MainWindow, QMainWindow)
 
-app = QApplication([])
 assert not QPixmap(str(graphics / 'CAMELS_Icon.png')).isNull(), (
     'Qt could not load the packaged application icon'
 )
