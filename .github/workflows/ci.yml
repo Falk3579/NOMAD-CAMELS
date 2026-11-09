@@ -145,14 +145,14 @@ jobs:
 
 
   # Verify distribution artifacts independently of the editable/source environment.
-  # Python 3.14 must install the wheel and initialize its Qt GUI on both systems.
+  # Python 3.14 must install the wheel and initialize its Qt GUI on all platforms.
   wheel_smoke_test:
     name: Installed wheel smoke test (Python 3.14, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Install Python 3.14
