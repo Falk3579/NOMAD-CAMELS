@@ -136,17 +136,14 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     This function performs the following steps:
       1. Checks if a QCoreApplication instance exists and creates one if needed.
       2. Displays the loading screen.
-      3. Reads the list of startup packages from a file (if available).
-      4. Starts a separate thread to import the packages with progress updates.
-      5. Processes application events until the import thread completes.
-      6. Saves the currently loaded modules to the startup package file.
-      7. Sets up the main window and exception hook.
-      8. Launches the main application event loop.
+      3. Imports the main application module in a worker thread.
+      4. Processes application events until the import thread completes.
+      5. Sets up the main window and exception hook.
+      6. Launches the main application event loop.
     """
     import os
 
     from nomad_camels.utility.crash_handling import configure_fault_handler
-    from nomad_camels.utility import user_paths
 
     configure_fault_handler()
 
@@ -161,11 +158,8 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     loading_screen = LoadingScreen()
     loading_screen.show()
 
-    # Read any legacy startup cache, but never write into the installed wheel.
-    package_list = user_paths.read_startup_packages()
-
-    # Start the import thread and connect its signals to the loading screen updates
-    thread = ImportThread(package_list)
+    # Import only CAMELS itself; replaying cached third-party modules delays startup.
+    thread = ImportThread()
     thread.update_progress.connect(loading_screen.set_progress)
     thread.update_text.connect(loading_screen.set_text)
     thread.start()
@@ -173,11 +167,6 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     # Process Qt events until the import thread has finished its execution
     while thread.isRunning():
         app.processEvents()
-
-    # Failure to write this optional cache must not block first launch.
-    user_paths.write_startup_packages(
-        name for name, module in tuple(sys.modules.items()) if module is not None
-    )
 
     # Import the main application and utility modules
     from nomad_camels import MainApp_v2
