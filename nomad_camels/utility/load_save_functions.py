@@ -54,7 +54,7 @@ import ophyd
 from nomad_camels.main_classes import protocol_class, device_class, loop_step
 from nomad_camels.utility.load_save_helper_functions import load_plots
 from nomad_camels.utility.device_handling import load_local_packages
-from nomad_camels.utility import variables_handling, user_paths
+from nomad_camels.utility import variables_handling, user_paths, startup_timing
 from nomad_camels.ui_widgets.warn_popup import WarnPopup
 from nomad_camels.bluesky_handling.watchdogs import Watchdog
 from nomad_camels.bluesky_handling.evaluation_helper import Evaluator
@@ -405,9 +405,11 @@ def load_save_dict(
                 for w in val:
                     obj[w] = Watchdog(**val[w])
             elif key == "protocols_dict":
-                load_protocols_dict(val, obj)
+                with startup_timing.phase("preset.rebuild_protocols"):
+                    load_protocols_dict(val, obj)
             elif key in ["active_devices_dict", "active_instruments"]:
-                load_devices_dict(val, obj)
+                with startup_timing.phase("preset.rebuild_devices"):
+                    load_devices_dict(val, obj)
             elif isinstance(obj, dict):
                 load_save_dict(val, obj, True, True)
             elif hasattr(obj, "__save_dict__") or hasattr(obj, "__dict__"):
@@ -628,7 +630,8 @@ def load_devices_dict(string_dict, devices_dict):
         the dictionary, where to put the loaded instruments
     """
     devices_dict.clear()
-    local_packages = load_local_packages()
+    with startup_timing.phase("drivers.scan_local_packages"):
+        local_packages = load_local_packages()
 
     path = f"{os.path.dirname(os.path.dirname(__file__))}/manual_controls/set_panel"
     sys.path.append(path)

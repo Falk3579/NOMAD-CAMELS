@@ -320,6 +320,9 @@ class Additional_Imports_Thread(QThread):
 
     def run(self) -> None:
         """ """
+        from nomad_camels.utility import startup_timing
+
+        startup_timing.mark("background.thread_started")
         from bluesky_handling.run_engine_overwrite import RunEngineOverwrite
         from bluesky.callbacks.best_effort import BestEffortCallback
         import databroker
@@ -386,3 +389,5 @@ class Additional_Imports_Thread(QThread):
             logging.warning("Could not find databroker catalog, using temporary")
             self.catalog = databroker.temp().v2
             self.catalog_temporary = True
+        startup_timing.mark("background.thread_finished")
+        startup_timing.flush()

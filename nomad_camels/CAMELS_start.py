@@ -55,6 +55,8 @@ class LoadingScreen(QDialog):
 
         # Create and configure the progress bar
         self.progress_bar = QProgressBar(self)
+        # Startup tasks are not a countable percentage of total work.
+        self.progress_bar.setRange(0, 0)
         # Add widgets to the layout in a grid formation
         layout.addWidget(image_label, 0, 0)
         layout.addWidget(self.label, 1, 0)
@@ -126,7 +128,10 @@ class ImportThread(QThread):
         self.update_text.emit("starting NOMAD CAMELS...")
         self.update_progress.emit(int((n - 1) / n * 96))
         # Import the main application module to proceed with launching the app
-        from nomad_camels import MainApp_v2
+        from nomad_camels.utility import startup_timing
+
+        with startup_timing.phase("import.MainApp_v2"):
+            from nomad_camels import MainApp_v2
 
 
 def start_camels(start_proxy_bool=True, actually_exec=True):
@@ -144,7 +149,9 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     import os
 
     from nomad_camels.utility.crash_handling import configure_fault_handler
+    from nomad_camels.utility import startup_timing
 
+    startup_timing.mark("launcher.start", proxy_enabled=start_proxy_bool)
     configure_fault_handler()
 
     # Ensure there is an active QApplication or QCoreApplication instance
@@ -162,11 +169,14 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     thread = ImportThread()
     thread.update_progress.connect(loading_screen.set_progress)
     thread.update_text.connect(loading_screen.set_text)
+    startup_timing.mark("launcher.import_thread_started")
     thread.start()
 
     # Process Qt events until the import thread has finished its execution
-    while thread.isRunning():
-        app.processEvents()
+    with startup_timing.phase("launcher.wait_for_main_import"):
+        while thread.isRunning():
+            app.processEvents()
+    startup_timing.mark("launcher.import_thread_finished")
 
     # Import the main application and utility modules
     from nomad_camels import MainApp_v2
@@ -176,10 +186,13 @@ def start_camels(start_proxy_bool=True, actually_exec=True):
     sys.excepthook = exception_hook.exception_hook
 
     # Create and display the main application window, hiding the loading screen
-    main_window = MainApp_v2.MainWindow(start_proxy_bool=start_proxy_bool)
+    with startup_timing.phase("launcher.main_window_init"):
+        main_window = MainApp_v2.MainWindow(start_proxy_bool=start_proxy_bool)
     loading_screen.hide()
     main_window.show()
     main_window.setWindowIcon(QIcon(str(resources.files(graphics) / "CAMELS_Icon.png")))
+    startup_timing.mark("launcher.show_called")
+    startup_timing.flush()
 
     thread.quit()
     thread.wait()

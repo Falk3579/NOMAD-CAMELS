@@ -34,6 +34,7 @@ from nomad_camels.utility import (
     logging_settings,
     qthreads,
     plot_placement,
+    startup_timing,
 )
 from nomad_camels.ui_widgets import (
     options_run_button,
@@ -79,8 +80,10 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             parent (Optional[QWidget]): Parent widget, defaults to None.
             start_proxy_bool (bool): Flag to start proxy, defaults to True.
         """
-        super().__init__(parent=parent)
-        self.setupUi(self)
+        with startup_timing.phase("mainwindow.qt_base_init"):
+            super().__init__(parent=parent)
+        with startup_timing.phase("mainwindow.setup_ui"):
+            self.setupUi(self)
         sys.stdout = self.textEdit_console_output.text_writer
         sys.stderr = self.textEdit_console_output.error_writer
 
@@ -167,10 +170,13 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             "watchdogs": variables_handling.watchdogs,
         }
         self.preferences = {}
-        self.load_preferences()
+        with startup_timing.phase("mainwindow.preferences"):
+            self.load_preferences()
         if self.preferences["auto_check_updates"]:
-            update_camels.auto_update(self)
-        self.load_state()
+            with startup_timing.phase("mainwindow.auto_update"):
+                update_camels.auto_update(self)
+        with startup_timing.phase("mainwindow.load_state"):
+            self.load_state()
 
         self.open_windows = []
         self.current_protocol_device_list = []
@@ -199,9 +205,11 @@ class MainWindow(Ui_MainWindow, QMainWindow):
 
         # Connect buttons for editing user and sample info and load their data
         self.pushButton_editUserInfo.clicked.connect(self.edit_user_info)
-        self.load_user_data()
+        with startup_timing.phase("mainwindow.user_data"):
+            self.load_user_data()
         self.pushButton_editSampleInfo.clicked.connect(self.edit_sample_info)
-        self.load_sample_data()
+        with startup_timing.phase("mainwindow.sample_data"):
+            self.load_sample_data()
         variables_handling.CAMELS_path = os.path.dirname(__file__)
 
         # Connect user combobox signals and set user type
@@ -278,15 +286,18 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.devices_from_queue = []
 
         # load extensions
-        self.load_extensions()
+        with startup_timing.phase("mainwindow.extensions"):
+            self.load_extensions()
         self.actionManage_Extensions.triggered.connect(self.manage_extensions)
 
         self.actionWatchdogs.triggered.connect(self.open_watchdog_definition)
         self.eva = Evaluator()
-        self.update_watchdogs()
+        with startup_timing.phase("mainwindow.watchdogs"):
+            self.update_watchdogs()
 
         # Start additional import thread
         self.importer_thread = qthreads.Additional_Imports_Thread(self)
+        startup_timing.mark("background.import_scheduled")
         self.importer_thread.start(priority=QThread.LowPriority)
 
         # Setup measurement tags UI and flow layout for tags
@@ -301,11 +312,12 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         self.start_timer_signal.connect(self._start_timer)
         self.protocol_finished_signal.connect(self.play_finished_sound)
 
-        version = update_camels.get_version()
-        if self.preferences["last_shown_notes"] != version:
-            update_camels.show_release_notes()
-            self.preferences["last_shown_notes"] = version
-            load_save_functions.save_preferences(self.preferences)
+        with startup_timing.phase("mainwindow.release_notes"):
+            version = update_camels.get_version()
+            if self.preferences["last_shown_notes"] != version:
+                update_camels.show_release_notes()
+                self.preferences["last_shown_notes"] = version
+                load_save_functions.save_preferences(self.preferences)
         if start_proxy_bool:
             from nomad_camels.main_classes.plot_proxy import start_zmq_proxy
             import threading
@@ -315,7 +327,8 @@ class MainWindow(Ui_MainWindow, QMainWindow):
             )
 
             # Also detect child crashes rather than hanging on an empty queue.
-            self.proxy_proc, in_port, out_port = start_zmq_proxy()
+            with startup_timing.phase("mainwindow.proxy_process_ready"):
+                self.proxy_proc, in_port, out_port = start_zmq_proxy()
             print(f"Proxy started on ports: Publisher={in_port}, Dispatcher={out_port}")
             # Setup Publisher and Dispatcher using the dynamic ports once for all plots and measurements run from the main app.
             # Measurements only create their own if the Python script is run 'standalone', so without the main app.
@@ -1481,10 +1494,12 @@ class MainWindow(Ui_MainWindow, QMainWindow):
         n_preset = 1
         while True:
             try:
-                presets = load_save_functions.get_most_recent_presets(True)
+                with startup_timing.phase("preset.enumerate_files"):
+                    presets = load_save_functions.get_most_recent_presets(True)
                 preset = presets[-n_preset]
                 if preset is not None:
-                    self.load_preset(preset)
+                    with startup_timing.phase("preset.load_preset"):
+                        self.load_preset(preset)
                 else:
                     self.save_state(True)
                     self.load_state()
@@ -1542,12 +1557,13 @@ class MainWindow(Ui_MainWindow, QMainWindow):
                 {}, self.preset_save_dict, remove_extra_key=True
             )
             self._current_preset[0] = "empty_preset"
-        self.update_channels()
-        variables_handling.preset = self._current_preset[0]
-        self.populate_meas_buttons()
-        self.populate_manuals_buttons()
-        self.with_or_without_instruments()
-        self.adjustSize()
+        with startup_timing.phase("preset.populate_ui"):
+            self.update_channels()
+            variables_handling.preset = self._current_preset[0]
+            self.populate_meas_buttons()
+            self.populate_manuals_buttons()
+            self.with_or_without_instruments()
+            self.adjustSize()
 
     def make_save_dict(self):
         """

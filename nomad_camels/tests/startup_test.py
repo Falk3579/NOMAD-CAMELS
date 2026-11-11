@@ -157,8 +157,15 @@ def instance(app):
 
 @pytest.mark.order(0)
 def test_set_progress(instance):
+    # LoadingScreen defaults to an indeterminate bar during application startup.
+    instance.progress_bar.setRange(0, 100)
     instance.set_progress(50)
     assert instance.progress_bar.value() == 50
+
+
+def test_startup_progress_is_indeterminate(instance):
+    assert instance.progress_bar.minimum() == 0
+    assert instance.progress_bar.maximum() == 0
 
 
 @pytest.mark.order(0)
